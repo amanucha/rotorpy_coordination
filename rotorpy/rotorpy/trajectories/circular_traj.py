@@ -45,7 +45,7 @@ class CircularTraj(object):
         """
 
         x = np.array([self.cx + self.radius * np.cos(self.omega * t),
-                                              self.cy + self.radius*np.sin(self.omega*t),
+                      self.cy + self.radius*np.sin(self.omega*t),
                                               self.cz + self.z])
         x_dot    = np.array([-self.radius*self.omega*np.sin(self.omega*t),
                             self.radius*self.omega*np.cos(self.omega*t),

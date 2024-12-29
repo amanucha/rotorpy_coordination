@@ -9,7 +9,7 @@ class TwoDLissajous(object):
     The standard Lissajous on the XY curve as defined by https://en.wikipedia.org/wiki/Lissajous_curve
     This is planar in the XY plane at a fixed height. 
     """
-    def __init__(self, A=1, B=1, a=1, b=1, delta=0, x_offset=0, y_offset=0, height=0, yaw_bool=False):
+    def __init__(self, A=1, B=1, a=1, b=1, delta=0, x_offset=0, y_offset=0, height=0, rotation_angle = 0.0, yaw_bool=False):
         """
         This is the constructor for the Trajectory object. A fresh trajectory
         object will be constructed before each mission.
@@ -34,6 +34,8 @@ class TwoDLissajous(object):
         self.y_offset = y_offset
 
         self.yaw_bool = yaw_bool
+        self.rotation_matrix = np.array([[np.cos(rotation_angle), -np.sin(rotation_angle)],
+                                    [np.sin(rotation_angle), np.cos(rotation_angle)]])
 
     def update(self, t):
         """
@@ -51,21 +53,48 @@ class TwoDLissajous(object):
                 yaw,      yaw angle, rad
                 yaw_dot,  yaw rate, rad/s
         """
-        x        = np.array([self.x_offset + self.A*np.sin(self.a*t + self.delta),
-                             self.y_offset + self.B*np.sin(self.b*t),
-                             self.height])
-        x_dot    = np.array([self.a*self.A*np.cos(self.a*t + self.delta),
-                             self.b*self.B*np.cos(self.b*t),
-                             0])
-        x_ddot   = np.array([-(self.a)**2*self.A*np.sin(self.a*t + self.delta),
-                             -(self.b)**2*self.B*np.sin(self.b*t),
-                             0])
-        x_dddot  = np.array([-(self.a)**3*self.A*np.cos(self.a*t + self.delta),
-                             -(self.b)**3*self.B*np.cos(self.b*t),
-                             0])
-        x_ddddot = np.array([(self.a)**4*self.A*np.sin(self.a*t + self.delta),
-                             (self.b)**4*self.B*np.sin(self.b*t),
-                             0])
+        x_pos = self.x_offset + self.A*np.sin(self.a*(t+np.pi/2) + self.delta)
+        y_pos = self.y_offset + self.B*np.sin(self.b*(t+np.pi/2))
+        z_pos = self.height
+
+        x_pos_dot = self.a*self.A*np.cos(self.a*(t+np.pi/2) + self.delta)
+        y_pos_dot = self.b*self.B*np.cos(self.b*(t+np.pi/2))
+
+        x_pos_ddot = -(self.a)**2*self.A*np.sin(self.a*(t+np.pi/2) + self.delta)
+        y_pos_ddot = -(self.b)**2*self.B*np.sin(self.b*(t+np.pi/2))
+
+        x_pos_dddot = -(self.a)**3*self.A*np.cos(self.a*(t+np.pi/2) + self.delta)
+        y_pos_dddot = -(self.b)**3*self.B*np.cos(self.b*(t+np.pi/2))
+
+        x_pos_ddddot = (self.a)**4*self.A*np.sin(self.a*(t+np.pi/2) + self.delta)
+        y_pos_ddddot = (self.b) ** 4 * self.B * np.sin(self.b * (t+np.pi/2))
+
+        position = np.transpose(np.array([x_pos, y_pos]))
+        rotated_position = self.rotation_matrix @ position
+
+        # Transpose velocity vectors
+        velocity = np.transpose(np.array([x_pos_dot, y_pos_dot]))
+        rotated_velocity = self.rotation_matrix @ velocity
+
+        # Transpose acceleration vectors
+        acceleration = np.transpose(np.array([x_pos_ddot, y_pos_ddot]))
+        rotated_acceleration = self.rotation_matrix @ acceleration
+
+        # Transpose jerk vectors
+        jerk = np.transpose(np.array([x_pos_dddot, y_pos_dddot]))
+        rotated_jerk = self.rotation_matrix @ jerk
+
+        # Transpose snap vectors
+        snap = np.transpose(np.array([x_pos_ddddot, y_pos_ddddot]))
+        rotated_snap = self.rotation_matrix @ snap
+
+        # Set the rotated values
+        x = np.array([rotated_position[0], rotated_position[1], z_pos])
+        x_dot = np.array([rotated_velocity[0], rotated_velocity[1], 0])
+        x_ddot = np.array([rotated_acceleration[0], rotated_acceleration[1], 0])
+        x_dddot = np.array([rotated_jerk[0], rotated_jerk[1], 0])
+        x_ddddot = np.array([rotated_snap[0], rotated_snap[1], 0])
+
 
         if self.yaw_bool:
             yaw = np.pi/4*np.sin(np.pi*t)

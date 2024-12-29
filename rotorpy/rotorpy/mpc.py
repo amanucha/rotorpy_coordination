@@ -2,7 +2,7 @@ import casadi as ca
 import numpy as np
 from rotorpy.config import *
 
-#TODO: check that the mpc initialization is done correctly
+
 class MPC:
     def __init__(self, nx=2, nu=1, h=0.1, K=10, T = 100, trajs=None, du=0.5, A=np.zeros((2, 2)), B=np.zeros((2, 1)), agent_idx=0,num_agents=2, delta=1, cav = False, path_following = False):
         self.nx = nx
@@ -17,12 +17,6 @@ class MPC:
         self.trajs = trajs
         self.du = du11
         self.du2 = du21
-        self.du11 = du11
-        self.du12 = du12
-        self.du21 = du21
-        self.du22 = du22
-        self.du31 = du31
-        self.du32 = du32
         self.delta = delta  # parameter for path following
         self.x_prev = ca.DM.zeros(self.nu * self.K + self.nx * (self.K + 1), 1)
         self.x_buffer = []
@@ -62,20 +56,8 @@ class MPC:
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
-                cost += (40*self.agent_idx+1)*(1/dist**2)*self.phi2(dist)
+                cost += (80*self.agent_idx+1)*(1/dist**2)*self.phi2(dist)
         return cost
-
-
-    # def phi(self, x):
-    #     return ca.if_else(
-    #         x <= self.du2,
-    #         1,
-    #         ca.if_else(
-    #             ca.logic_and(x <= self.du, x >= self.du2),
-    #             (x - self.du) ** 2 / ((self.du2 - self.du)** 2),
-    #             0
-    #         )
-    #     )
 
 
     def phi(self, x):
@@ -111,27 +93,6 @@ class MPC:
             )
         )
 
-            # def phi3(self, x):
-    #     return ca.if_else(
-    #         x <= self.du32,
-    #         0,
-    #         ca.if_else(
-    #             ca.logic_and(x <= self.du31, x >= self.du32),
-    #             (x - self.du32)**2 / ((self.du32 - self.du31)**2),
-    #             1
-    #         )
-    #     )
-
-    # def phi2(self, x):
-    #     return ca.if_else(
-    #         x <= self.du22,
-    #         1,
-    #         ca.if_else(
-    #             ca.logic_and(x <= self.du21, x >= self.du22),
-    #             (x - self.du21)**2 / ((self.du22- self.du21)**2),
-    #             0
-    #         )
-    #     )
 
     def dist_to_neighb_2(self, x, gamma_all):
         cost = 0
@@ -159,7 +120,7 @@ class MPC:
         gamma_dot = x[1]
         obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all) + u ** 2
         if self.cav:
-            obj += 20*self.F_i2(x, gamma_all)
+            obj += 100*self.F_i2(x, gamma_all)
         return obj
 
     def objective_terminal(self, x, gamma_all):

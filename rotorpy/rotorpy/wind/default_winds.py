@@ -183,27 +183,27 @@ class DecreasingWind(object):
     After t = 5, the wind remains at 0.
     """
 
-    def __init__(self, initial_speed):
+    def __init__(self, initial_speed, wind_duration):
         """
         No additional parameters are required.
         """
         self.initial_speed = initial_speed  # Initial wind speed
-        self.end_time = 120 # Time after which wind becomes zero
+        self.end_time = wind_duration # Time after which wind becomes zero
 
-    def update(self, t, i):
+    def update(self, t, i, drones):
         """
         Given the present time and position of the multirotor, return the
         current wind speed on all three axes.
 
         The wind should be expressed in the world coordinates.
         """
-        if t <= self.end_time and i == 0:
-            wind_speed = self.initial_speed - t*0.05
+        if t <= self.end_time and (any(item == i for item in drones)):
+            wind_speed = self.initial_speed - t*0.1
         else:
             wind_speed = 0
 
-        return np.array([-wind_speed, -wind_speed, -0.2*wind_speed])
-
+        # return np.array([-wind_speed, -wind_speed, -0.2*wind_speed])
+        return np.array([wind_speed, wind_speed, 0])
     
 if __name__=="__main__":
     wind = ConstantWind(wx=1,wy=1,wz=1)

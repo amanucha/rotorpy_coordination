@@ -154,7 +154,19 @@ class World(object):
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
-        c = Cuboid(ax, xmax - xmin, ymax - ymin, zmax - zmin, alpha=0.01, linewidth=1, edgecolors='k')
+
+        ax.set_xticks(np.linspace(xmin, xmax, 5))
+        ax.set_yticks(np.linspace(ymin, ymax, 5))
+        ax.set_zticks(np.linspace(zmin, zmax, 5))
+
+        # Set font size for the ticks
+        ax.tick_params(axis='both', which='major', labelsize=6)  # Adjust size here for x and y axes
+        ax.tick_params(axis='z', which='major', labelsize=6)  # Adjust size here for z axis
+
+        # Optionally, enable the grid if needed
+        ax.grid(True)
+
+        c = Cuboid(ax, xmax - xmin, ymax - ymin, zmax - zmin, alpha=0.01, linewidth=0.0, edgecolors='k')
         c.transform(position=(xmin, ymin, zmin))
         return list(c.artists)
 
@@ -181,7 +193,15 @@ class World(object):
                 facecolor = b.get('color', None)
             if edgecolor is None:
                 edgecolor = 'k'
-            c = Cuboid(ax, xmax-xmin, ymax-ymin, zmax-zmin, alpha=alpha, linewidth=1, edgecolors=edgecolor, facecolors=facecolor)
+            ax.set_xticks([np.min(self.world['bounds']['extents'][::2]), np.max(self.world['bounds']['extents'][::2])])
+            ax.set_yticks([np.min(self.world['bounds']['extents'][2:4]), np.max(self.world['bounds']['extents'][2:4])])
+            ax.set_zticks([np.min(self.world['bounds']['extents'][4:]), np.max(self.world['bounds']['extents'][4:])])
+
+            # Set font size for the ticks
+            ax.tick_params(axis='both', which='major', labelsize=6)  # Adjust size here
+            ax.tick_params(axis='z', which='major', labelsize=6)  # Adjust size here
+
+            c = Cuboid(ax, xmax-xmin, ymax-ymin, zmax-zmin, alpha=alpha, linewidth=0,edgecolors=edgecolor, facecolors=facecolor)
             c.transform(position=(xmin, ymin, zmin))
             block_artists.extend(c.artists)
         return bounds_artists + block_artists
