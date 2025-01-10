@@ -24,7 +24,6 @@ class CircularTraj(object):
         self.cx, self.cy, self.cz = center[0], center[1], center[2]
         self.omega = 2*np.pi*self.freq
         self.yaw_bool = yaw_bool
-        self.transfer = True
 
 
     def update(self, t):

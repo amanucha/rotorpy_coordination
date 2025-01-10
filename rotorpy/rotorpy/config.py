@@ -1,9 +1,11 @@
 import numpy as np
 
 # Generate a list of configurations.  Each config has a trajectory, time offset, sim duration, and sim time discretization.
-width = 1.0 #param for lissajeous trajectory
-length =8 #param for lissajeous trajectory
-lim = 8 # specify the size of the world
+width = 0.8  #param for lissajeous trajectory
+length = 8 #param for lissajeous trajectory
+a = 0.5
+b = 0.25
+lim = 10 # specify the size of the world
 radius = 1
 z = 1
 freq = (np.pi/70)
@@ -21,24 +23,32 @@ time_step = h
 
 
 # tuning according to scenarios
-delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
-# delays = [0.0]*8
-t_final = 10
+# delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
+# delays = [0.0,1.0,1.5,0.5,1.5,2.0, 4.0,4.0]
+delays = [0]*8
+t_final =  42#70/np.pi
 num_agents = 6
-path_following = True
-cav = False
+path_following = False
+coeff = 0.05 #path following parameter coefficient
+cav = True
+coeff_f_i2 = 70
+coeff_agent = 1
 # wind = True
-du11 = 20  # Communication term, parameter of the phi function
-du21 = 2.0    # Collision Avoidance
-dupc = 3.0   #pace keeping term
-drones_with_wind = [3,4,5]
-wind_duration = 7/time_step
+du11 = 20.0  # Communication term, parameter of the phi function
+# du21 = 6.0  # Collision Avoidance
+dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
+# dupc = [dus[i]/3 for i in range(len(dus))]
+# dupc = 2.5 #pace keeping term
+dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
+drones_with_wind = [4,5]
+wind_duration = 10/time_step
 initial_wind_speed = 5
 
 
-u_min = [-15]
-u_max = [15]
-x_min = [0, 0]
+u_min = [-6] # previous cases without cav -15
+u_max = [6] # previous cases without cav 15
+x_min = [0, 0.0]
+x_minimums = [[0, 0.2], [0, 0.5], [0, 0.7], [0, 1.1], [0, 1.3], [0, 1.5]]
 x_max = [np.inf, 2]
 T = int(t_final/time_step)
 

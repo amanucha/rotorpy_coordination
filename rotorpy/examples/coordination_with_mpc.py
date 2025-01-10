@@ -25,73 +25,20 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
-
-def find_collisions(all_positions, epsilon=1e-1):
-    """
-    Checks if any two agents get within epsilon meters of any other agent.
-    Inputs:
-        all_positions: the position vs time for each agent concatenated into one array.
-        epsilon: the distance threshold constituting a collision.
-    Outputs:
-        collisions: a list of dictionaries where each dict describes the time of a collision, agents involved, and the location.
-    """
-
-    N, M, _ = all_positions.shape
-    collisions = []
-
-    for t in range(N):
-        # Get positions.
-        pos_t = all_positions[t]
-
-        dist_sq = np.sum((pos_t[:, np.newaxis, :] - pos_t[np.newaxis, :, :])**2, axis=-1)
-
-        # Set diagonal to a large value to avoid false positives.
-        np.fill_diagonal(dist_sq, np.inf)
-
-        close_pairs = np.where(dist_sq < epsilon**2)
-
-        for i, j in zip(*close_pairs):
-            if i < j: # avoid duplicate pairs.
-                collision_info = {
-                    "timestep": t,
-                    "agents": (i, j),
-                    "location": pos_t[i]
-                }
-                collisions.append(collision_info)
-
-    return collisions
-
 def generate_trajectories():
     #circlar simple trajectories
-    trajectories = [CircularTraj(center = np.array([0,0,0]),radius =  radius* (i*1.75 + 1.5), z = z, freq = freq) for i in range(num_agents)]
+    # trajectories = [CircularTraj(center = np.array([0,0,0]),radius =  radius* (i*1.2 + 1.5), z = z, freq = freq) for i in range(num_agents)]
 
-    centers = [[1,1, 0], [1,-1, 0],[-1,1, 0], [-1,-1, 0]]
-    #circular overlapping trajectories
-    # trajectories = [CircularTraj(center = np.array(centers[i]),radius =  np.sqrt(2), freq = freq) for i in range(num_agents)]
-    # trajectories = [Kochari(start_point=np.array([0, 0 + i, 0]), z = z, straight_dist=5, radius=radius, freq=freq) for i in range(num_agents)]
-    # trajectories = [CircularTraj(center=np.array([i - 2, 0, 0]), radius=radius * (i + 3), freq=freq) for i in
-    #                 range(num_agents)]
-
-    # trajectories = [TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 3*np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 6* np.pi/4),
-    #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 7*np.pi/4)]
-    # circular trajectories with z-sinusoid
-    # trajectories = [
-    #     CircularTrajWithSinusoid(center=np.array([radius * ((i-1)*1.75 + 1)* (i+1), 0, 0]),
-    #                  radius=radius * (i*1.75 + 1),
-    #                  freq=freq,
-    #                  sin_freq=sin_freq,
-    #                  sin_ampl=sin_ampl,
-    #                  is_odd=(i % 2 == 1)) for i in range(num_agents)
-    # ]
+    trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
+                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
+                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/6, pi_param = np.pi/2),
+                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 3*np.pi/6, pi_param = np.pi/2),
+                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/6, pi_param = np.pi/2),
+                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/6, pi_param = np.pi/2)
+                    ]
 
     # t_values = np.arange(0, t_final, time_step)
-
+    #
     # # Create figure for 3D plotting
     # fig = plt.figure(figsize=(10, 10))
     # ax = fig.add_subplot(111, projection='3d')
@@ -176,43 +123,50 @@ def execute_mpc(trajectories):
     for i in range(num_agents):
         mav[i] = Multirotor(quad_params)
         controller[i] = SE3Control(quad_params)
-        # wind[i] = DecreasingWind(initial_speed=4*(0.15*i+1))
-        wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration = wind_duration)
+        # wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration = wind_duration)
         # Init mav at the first waypoint for the trajectory.
         x0[i] = {'x': trajectories[i].update(x0_gamma[0][i])["x"],
               'v': trajectories[i].update(x0_gamma[0][i])["x_dot"],   #TODO: check gamma_dot = 1 is implemented here?
               'q': np.array([0, 0, 0, 1]),  # [i,j,k,w]
               'w': np.zeros(3, ),
-             # 'wind': np.array([0, 0, 0]),
-             # 'wind': np.array([5,5, 2]),  # Since wind is handled elsewhere, this value is overwritten
-             'wind': wind[i].update(0, i, drones_with_wind),
+             'wind': np.array([0, 0, 0]),
+             # 'wind': wind[i].update(0, i, drones_with_wind),
               'rotor_speeds': np.array([1788.53, 1788.53, 1788.53, 1788.53])}
         time[i] = [x0_gamma[0][i]]
         states[i] = [x0[i]]
         flats[i] = [trajectories[i].update(x0_gamma[0][i])]
         controls[i] = [controller[i].update(time[i][-1], states[i][-1], flats[i][-1])]
 
+    min_distances = []
     while True:
         if any(j[-1] >= t_final for j in time) or t >= T: # if any agent arrives, we break the loop
             break
         gamma_all = gamma_all_new.copy()
+        min_dist = np.inf
         for i in range(num_agents):
             mpc = mpcs[i]
-            states[i][-1]["wind"] = wind[i].update(t, i, drones_with_wind)
+            # in case of wind uncomment the following line
+            # states[i][-1]["wind"] = wind[i].update(t, i, drones_with_wind)
             actual_state = mav[i].step(states[i][-1], controls[i][-1], time_step)
-            x_min = [0.0, 0.0]
+
             # Compute the position difference between the ith crazyflie and the rest
+            x_min = [0.0, 0.0]
             if mpc.cav:
-                x_min = [0.0,0.0]
                 for j in range(num_agents):
                     if i != j:
                         pos_i = np.asarray(actual_state["x"])
                         pos_j = np.asarray(mav[j].step(states[j][-1], controls[j][-1], time_step)["x"])
                         distance = np.linalg.norm(pos_i - pos_j)
-                        if distance <= dupc:
-                            x_min = [0.0, 1.0]
-
-
+                        if distance <= dupc[i]:
+                            x_min = x_minimums[i]
+            #stroing minimum distances for plotting
+            for j in range(num_agents):
+                if i != j:
+                    pos_i = np.asarray(actual_state["x"])
+                    pos_j = np.asarray(mav[j].step(states[j][-1], controls[j][-1], time_step)["x"])
+                    distance = np.linalg.norm(pos_i - pos_j)
+                    if distance <= min_dist:
+                        min_dist = distance
             u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i)
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
             approx_x = A @ mpc.x_buffer[-1][:, -1]
@@ -224,57 +178,70 @@ def execute_mpc(trajectories):
             controls[i].append(controller[i].update(time[i][-1], states[i][-1], flats[i][-1]))
             print(t)
         t += 1
-    return time, states,  flats, controls, x, u, cost, t
+        min_distances.append(min_dist)
+    return time, states,  flats, controls, x, u, cost, t, min_distances
 
-def plots(x, u, cost, t):
+def plots(x, u, cost, t, min_distances):
     # 2D plots
     plt.figure(2)
     for i in range(num_agents):
         nonzero_indices = np.nonzero(x[:t, 0, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
-        plt.plot(time_values, x[:t, 0, i][nonzero_indices], label=f'agent {i+1}')
-    plt.title(r'$\gamma$')
-    plt.xlabel('time')
-    plt.ylabel(r'$\gamma$')
+        plt.plot(time_values, x[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
+    # plt.title(r'${{\gamma}_i}(t)$')
+    plt.xlabel('t (s)')
+    plt.ylabel(r'${{\gamma}_i}(t)$')
     plt.legend()
     plt.grid(True)
-    plt.savefig('plots/Gammas.png')
+    plt.savefig('plots/Gammas.png', dpi=300)
 
     plt.figure(3)
     for i in range(num_agents):
         nonzero_indices = np.nonzero(x[:t, 1, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
-        plt.plot(time_values, x[:t, 1, i][nonzero_indices], label=f'agent {i+1}')
-    plt.title(r'$\dot{\gamma}$')
-    plt.xlabel('time')
-    plt.ylabel(r'$\dot{\gamma}$')
+        plt.plot(time_values, x[:t, 1, i][nonzero_indices], label=f'UAV {i+1}')
+    # plt.title(r'$\dot{{{\gamma}_i}(t)}$')
+    plt.xlabel('t (s)')
+    plt.ylabel(r'$\dot{{{\gamma}_i}(t)}$')
     plt.legend()
     plt.grid(True)
-    plt.savefig('plots/Gamma_Dots.png')
+    plt.savefig('plots/Gamma_Dots.png', dpi=300)
 
     plt.figure(4)
     for i in range(num_agents):
         nonzero_indices = np.nonzero(u[:t, 0, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
-        plt.plot(time_values, u[:t, 0, i][nonzero_indices], label=f'agent {i+1}')
-    plt.title(r'$\ddot{\gamma}$')
-    plt.xlabel('time')
-    plt.ylabel(r'$\ddot{\gamma}$')
+        plt.plot(time_values, u[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
+    # plt.title(r'$\ddot{{{\gamma}_i}(t)}$')
+    plt.xlabel('t (s)')
+    plt.ylabel(r'$\ddot{{{\gamma}_i}(t)}$')
     plt.legend()
     plt.grid(True)
-    plt.savefig('plots/Gamma_Dot_Dots.png')
+    plt.savefig('plots/Gamma_Dot_Dots.png', dpi=300)
 
     plt.figure(5)
     for i in range(num_agents):
         nonzero_indices = np.nonzero(cost[:t, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
-        plt.plot(time_values, cost[:t, i][nonzero_indices], label=f'agent {i+1}')
-    plt.title('Cost')
-    plt.xlabel('time')
+        plt.plot(time_values, cost[:t, i][nonzero_indices], label=f'UAV {i+1}')
+    # plt.title('Cost')
+    plt.xlabel('t (s)')
     plt.ylabel('Cost')
     plt.legend()
     plt.grid(True)
-    plt.savefig('plots/Costs.png')
+    plt.savefig('plots/Costs.png', dpi=300)
+
+    plt.figure(6)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(min_distances[:t])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, min_distances[:t])
+    plt.title("Closest Distance Between Any Two UAVs Over Time")
+    plt.xlabel('t (s)')
+    plt.ylabel('Distance')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('plots/Distances.png', dpi=300)
 
 def plot_videos(x, u, cost, t):
     # Function to update the plot for each frame
@@ -283,10 +250,10 @@ def plot_videos(x, u, cost, t):
         for i in range(num_agents):
             nonzero_indices = np.nonzero(x[:frame, 0, i])
             time_values = nonzero_indices[0] * time_step
-            ax.plot(time_values, x[:frame, 0, i][nonzero_indices], label=f'agent {i+1}')
-        ax.set_title(r'$\gamma$')
-        ax.set_xlabel('time')
-        ax.set_ylabel(r'$\gamma$')
+            ax.plot(time_values, x[:frame, 0, i][nonzero_indices], label=f'UAV {i+1}')
+        # ax.set_title(r'${{\gamma}_i}(t)$')
+        ax.set_xlabel('t (s)')
+        ax.set_ylabel(r'${{\gamma}_i}(t)$')
         ax.legend()
         ax.grid(True)
         ax.set_xlim(0, t * time_step)  # Set x-axis limit to the total time
@@ -297,10 +264,10 @@ def plot_videos(x, u, cost, t):
         for i in range(num_agents):
             nonzero_indices = np.nonzero(x[:frame, 1, i])
             time_values = nonzero_indices[0] * time_step
-            ax.plot(time_values, x[:frame, 1, i][nonzero_indices], label=f'agent {i+1}')
-        ax.set_title(r'$\dot{\gamma}$')
-        ax.set_xlabel('time')
-        ax.set_ylabel(r'$\dot{\gamma}$')
+            ax.plot(time_values, x[:frame, 1, i][nonzero_indices], label=f'UAV {i+1}')
+        # ax.set_title(r'$\dot{{{\gamma}_i}(t)$')
+        ax.set_xlabel('t (s)')
+        ax.set_ylabel(r'$\dot{{{\gamma}_i}(t)}$')
         ax.legend()
         ax.grid(True)
         ax.set_xlim(0, t * time_step)
@@ -311,10 +278,10 @@ def plot_videos(x, u, cost, t):
         for i in range(num_agents):
             nonzero_indices = np.nonzero(u[:frame, 0, i])
             time_values = nonzero_indices[0] * time_step
-            ax.plot(time_values, u[:frame, 0, i][nonzero_indices], label=f'agent {i+1}')
-        ax.set_title(r'$\ddot{\gamma}$')
-        ax.set_xlabel('time')
-        ax.set_ylabel(r'$\ddot{\gamma}$')
+            ax.plot(time_values, u[:frame, 0, i][nonzero_indices], label=f'UAV {i+1}')
+        # ax.set_title(r'$\ddot{{{\gamma}_i}(t)}$')
+        ax.set_xlabel('t (s)')
+        ax.set_ylabel(r'$\ddot{{{\gamma}_i}(t)}$')
         ax.legend()
         ax.grid(True)
         ax.set_xlim(0, t * time_step)
@@ -325,9 +292,9 @@ def plot_videos(x, u, cost, t):
         for i in range(num_agents):
             nonzero_indices = np.nonzero(cost[:frame, i])
             time_values = nonzero_indices[0] * time_step
-            ax.plot(time_values, cost[:frame, i][nonzero_indices], label=f'agent {i+1}')
-        ax.set_title('Cost')
-        ax.set_xlabel('time')
+            ax.plot(time_values, cost[:frame, i][nonzero_indices], label=f'UAV {i+1}')
+        # ax.set_title('Cost')
+        ax.set_xlabel('t (s)')
         ax.set_ylabel('Cost')
         ax.legend()
         ax.grid(True)
@@ -363,7 +330,7 @@ def main():
     world = World.empty([-lim, lim, -lim, lim, -lim, lim])
 
     trajectories = generate_trajectories()
-    time, states,  flats, controls, x, u, cost, t = execute_mpc(trajectories)
+    time, states,  flats, controls, x, u, cost, t, min_distances = execute_mpc(trajectories)
 
     for i in range(num_agents):
         time[i]        = np.array(time[i], dtype=float)
@@ -384,19 +351,18 @@ def main():
     all_pos = np.stack(all_pos, axis=1)
     all_wind = np.stack(all_wind, axis=1)
     all_rot = np.stack(all_rot, axis=1)
-    collisions = find_collisions(all_pos, epsilon=2e-1)
     # Animate.
-    ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= None)#"Simulation video")
+    ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation video")
 
     # Plot the positions of each agent in 3D, alongside collision events (when applicable)
-    fig = plt.figure(6)
+    fig = plt.figure(7)
     ax = fig.add_subplot(projection='3d')
     colors = plt.cm.tab10(range(all_pos.shape[1]))
     ax.set_zlim(-lim, lim)
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
     for mav in range(all_pos.shape[1]):
-        ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav])
+        ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav], label=f'UAV {mav+1}')
         ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
                 markerfacecolor=colors[mav], markeredgecolor='k')
 
@@ -407,28 +373,59 @@ def main():
     ax.set_xticks(x_ticks)
     ax.set_yticks(y_ticks)
     ax.set_zticks(z_ticks)
+    ax.legend(loc='upper right', fontsize=8)
 
     # Set font size for the ticks
     ax.tick_params(axis='both', which='major', labelsize=6)  # Adjust size here
     ax.tick_params(axis='z', which='major', labelsize=6)  # Adjust size here
-
+    ax.set_xlabel('X (m)', fontsize=10)
+    ax.set_ylabel('Y (m)', fontsize=10)
+    ax.set_zlabel('Z (m)', fontsize=10)
     # Enable the grid
     ax.grid(True)
 
     fig.savefig('plots/trajectories.jpg', dpi=300)
 
+
+    fig2, ax2 = plt.subplots()
+    for mav in range(all_pos.shape[1]):
+        ax2.plot(all_pos[:t, mav, 1], all_pos[:t, mav, 0], color=colors[mav], label=f'UAV {mav + 1}')
+        ax2.plot(all_pos[-1, mav, 1], all_pos[-1, mav, 0], '*', markersize=10,
+                 markerfacecolor=colors[mav], markeredgecolor='k')
+
+    # Set axis labels and limits
+    ax2.set_xlim(-lim, lim)
+    ax2.set_ylim(-lim, lim)
+
+    # Set ticks for the 2D plot
+    ax2.set_xticks(np.linspace(-lim, lim, 5))
+    ax2.set_yticks(np.linspace(-lim, lim, 5))
+
+    # Label the axes
+    ax2.set_xlabel('Y (m)', fontsize=10)
+    ax2.set_ylabel('X (m)', fontsize=10)
+
+    # Enable the grid
+    ax2.grid(True)
+
+    # Add a legend
+    ax2.legend(loc='lower right', fontsize=8)
+
+    # Set font size for ticks
+    ax2.tick_params(axis='both', which='major', labelsize=6)
+
+    # Save the 2D plot
+    fig2.savefig('plots/trajectories_2d.jpg', dpi=300)
+
+    # # Plot the positions of each agent in 3D, alongside collision events (when applicable)
+    # trajectory_points = [np.array([traj.update(t)['x'] for t in np.linspace(0, 2 * np.pi, 500)]) for traj in
+    #                      trajectories]
+
+
+
     world.draw(ax)
-    for event in collisions:
-        ax.plot([all_pos[event['timestep'], event['agents'][0], 0]],
-                [all_pos[event['timestep'], event['agents'][0], 1]],
-                [all_pos[event['timestep'], event['agents'][0], 2]], 'rx', markersize=10)
-    ax.set_xlabel("x, m")
-    ax.set_ylabel("y, m")
-    ax.set_zlabel("z, m")
 
-
-    #
-    # plots(x, u, cost, t)
+    plots(x, u, cost, t, min_distances)
     # plot_videos(x, u, cost, t)
 
 if __name__ == "__main__":

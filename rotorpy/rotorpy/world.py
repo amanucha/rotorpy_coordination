@@ -193,6 +193,7 @@ class World(object):
                 facecolor = b.get('color', None)
             if edgecolor is None:
                 edgecolor = 'k'
+
             ax.set_xticks([np.min(self.world['bounds']['extents'][::2]), np.max(self.world['bounds']['extents'][::2])])
             ax.set_yticks([np.min(self.world['bounds']['extents'][2:4]), np.max(self.world['bounds']['extents'][2:4])])
             ax.set_zticks([np.min(self.world['bounds']['extents'][4:]), np.max(self.world['bounds']['extents'][4:])])

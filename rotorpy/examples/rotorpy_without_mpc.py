@@ -67,7 +67,20 @@ world = World.empty([-7,7,-7,7,-7,7])
 
 trajectories = [CircularTraj(center = np.array([0,0,0]),radius =  radius* (i+1.5), z = z, freq = freq) for i in range(num_agents)]
 
-t
+trajectories = [TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle=0.0),
+                TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0,
+                              rotation_angle=np.pi / 3),
+                TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0,
+                              rotation_angle=2 * np.pi / 3),
+                TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0,
+                              rotation_angle=3 * np.pi / 3),
+                TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0,
+                              rotation_angle=4 * np.pi / 3),
+                TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0,
+                              rotation_angle=5 * np.pi / 3),
+                #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 6* np.pi/4),
+                #                 TwoDLissajous(A=width, B=length, a=2, b=1, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 7*np.pi/4)
+                ]
 # Run RotorPy in parallel.
 mav = [None] * num_agents
 controller = [None] * num_agents
@@ -82,14 +95,14 @@ t_offset = [0,1,0.5,2,0,1]
 for i in range(num_agents):
     mav[i] = Multirotor(quad_params)
     controller[i] = SE3Control(quad_params)
-    wind[i] = DecreasingWind(initial_speed=4)
+    # wind[i] = DecreasingWind(initial_speed=4)
     # Init mav at the first waypoint for the trajectory.
     x0[i] = {'x': trajectories[i].update(t_offset[i])["x"],
           'v': np.zeros(3,),   #TODO: check gamma_dot = 1 is implemented here?
           'q': np.array([0, 0, 0, 1]),  # [i,j,k,w]
           'w': np.zeros(3, ),
-          # 'wind': np.array([0, 0, 0]),  # Since wind is handled elsewhere, this value is overwritten
-             'wind': wind[i].update(0),
+          'wind': np.array([0, 0, 0]),  # Since wind is handled elsewhere, this value is overwritten
+          #    'wind': wind[i].update(0),
           'rotor_speeds': np.array([1788.53, 1788.53, 1788.53, 1788.53])}
     time[i] = [0]
     states[i] = [x0[i]]
@@ -100,7 +113,7 @@ while True:
     if time[0][-1] >= t_final: #all time are the same for all agents, we just take the first agent's time
         break
     for i in range(num_agents):
-        states[i][-1]["wind"] = wind[i].update(t)
+        # states[i][-1]["wind"] = wind[i].update(t)
         time[i].append(time[i][-1] +time_step)
         states[i].append(mav[i].step(states[i][-1], controls[i][-1], time_step))
         flats[i].append(trajectories[i].update(time[i][-1] + t_offset[i])) #x,v, yaw, etc, from trajectory with the current gamma

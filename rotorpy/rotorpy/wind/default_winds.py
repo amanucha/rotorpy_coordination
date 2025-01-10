@@ -97,7 +97,7 @@ class LadderWind(object):
 
     """
 
-    def __init__(self, min=np.array([-1,-1,-1]), max=np.array([1,1,1]), duration=np.array([1,1,1]), Nstep=np.array([5,5,5]), random_flag=False):
+    def __init__(self, min=np.array([-5,-5,-5]), max=np.array([5,5,5]), duration=np.array([5,5,5]), Nstep=np.array([10,10,10]), random_flag=False):
         """
         Inputs:
             min := array of minimum wind speeds across each axis
@@ -140,40 +140,44 @@ class LadderWind(object):
         # Initialize the winds
         self.wx, self.wy, self.wz = self.wx_arr[self.xid], self.wy_arr[self.yid], self.wz_arr[self.zid]
 
-    def update(self, t, position):
+    def update(self, t, i, drones):
         """
         Given the present time and position of the multirotor, return the
         current wind speed on all three axes. 
         
         The wind should be expressed in the world coordinates. 
         """
-        if self.timerx is None:
-            self.timerx, self.timery, self.timerz = t, t, t
-        
-        if (t - self.timerx) >= self.durx:
-            if self.random_flag:
-                self.xid = np.random.choice(self.nx)
-            else:
-                self.xid = (self.xid + 1) % self.nx
-            self.wx = self.wx_arr[self.xid]
-            self.timerx = t
+        if any(item == i for item in drones):
+            if self.timerx is None:
+                self.timerx, self.timery, self.timerz = t, t, t
 
-        if (t - self.timery) >= self.dury:
-            if self.random_flag:
-                self.yid = np.random.choice(self.ny)
-            else:
-                self.yid = (self.yid + 1) % self.ny
-            self.wy = self.wy_arr[self.yid]
-            self.timery = t
+            if (t - self.timerx) >= self.durx:
+                if self.random_flag:
+                    self.xid = np.random.choice(self.nx)
+                else:
+                    self.xid = (self.xid + 1) % self.nx
+                self.wx = self.wx_arr[self.xid]
+                self.timerx = t
 
-        if (t - self.timerz) >= self.durz:
-            if self.random_flag:
-                self.zid = np.random.choice(self.nz)
-            else:
-                self.zid = (self.zid + 1) % self.nz
-            self.wz = self.wz_arr[self.zid]
-            self.timerz = t
+            if (t - self.timery) >= self.dury:
+                if self.random_flag:
+                    self.yid = np.random.choice(self.ny)
+                else:
+                    self.yid = (self.yid + 1) % self.ny
+                self.wy = self.wy_arr[self.yid]
+                self.timery = t
 
+            if (t - self.timerz) >= self.durz:
+                if self.random_flag:
+                    self.zid = np.random.choice(self.nz)
+                else:
+                    self.zid = (self.zid + 1) % self.nz
+                self.wz = self.wz_arr[self.zid]
+                self.timerz = t
+        else:
+            self.wx = 0
+            self.wy = 0
+            self.wz = 0
         return np.array([self.wx, self.wy, self.wz])
 
 
@@ -198,7 +202,8 @@ class DecreasingWind(object):
         The wind should be expressed in the world coordinates.
         """
         if t <= self.end_time and (any(item == i for item in drones)):
-            wind_speed = self.initial_speed - t*0.1
+            const = self.initial_speed/self.end_time
+            wind_speed = self.initial_speed - t*const
         else:
             wind_speed = 0
 
