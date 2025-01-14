@@ -118,20 +118,22 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
 
     world_artists = world.draw(ax)
 
-    title_artist = ax.set_title('t = {}'.format(time[0]))
+    # title_artist = ax.set_title('t = {}'.format(time[0]))
 
     def init():
         ax.draw(fig.canvas.get_renderer())
         # return world_artists + list(cquad.artists) + [title_artist]
-        return world_artists + [title_artist] + [q.artists for q in quads]
+        #return world_artists + [title_artist] + [q.artists for q in quads]
+        return world_artists + [q.artists for q in quads]
 
     def update(frame):
-        title_artist.set_text('t = {:.2f}'.format(time[frame]))
+        # title_artist.set_text('t = {:.2f}'.format(time[frame]))
         for i, quad in enumerate(quads):
             quad.transform(position=position[frame,i,:], rotation=rotation[frame,i,:,:], wind=wind[frame,i,:])
         # [a.do_3d_projection(fig.canvas.get_renderer()) for a in quad.artists]   # No longer necessary in newer matplotlib?
         # return world_artists + list(quad.artists) + [title_artist]
-        return world_artists + [title_artist] + [q.artists for q in quads]
+        # return world_artists + [title_artist] + [q.artists for q in quads]
+        return world_artists + [q.artists for q in quads]
 
     ani = ClosingFuncAnimation(fig=fig,
                         func=update,

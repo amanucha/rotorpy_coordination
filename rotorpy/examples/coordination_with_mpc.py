@@ -2,17 +2,15 @@
 Imports
 """
 import csv
-# from examples.gymnasium_basic_usage import controller
 from rotorpy.environments import Environment
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
 from rotorpy.controllers.quadrotor_control import SE3Control
 from rotorpy.trajectories.hover_traj import HoverTraj
 from rotorpy.trajectories.circular_traj import CircularTraj
+from rotorpy.trajectories.lissajous_traj import TwoDLissajous
 from rotorpy.trajectories.circular_traj_with_sinusoid import CircularTrajWithSinusoid
 from rotorpy.wind.default_winds import NoWind, ConstantWind, SinusoidWind, LadderWind, DecreasingWind
-from rotorpy.trajectories.lissajous_traj import TwoDLissajous
-from rotorpy.trajectories.kochari import Kochari
 from rotorpy.trajectories.speed_traj import ConstantSpeed
 from rotorpy.trajectories.minsnap import MinSnap
 from rotorpy.world import World
@@ -36,43 +34,6 @@ def generate_trajectories():
                     TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/6, pi_param = np.pi/2),
                     TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/6, pi_param = np.pi/2)
                     ]
-
-    # t_values = np.arange(0, t_final, time_step)
-    #
-    # # Create figure for 3D plotting
-    # fig = plt.figure(figsize=(10, 10))
-    # ax = fig.add_subplot(111, projection='3d')
-    #
-    # # Loop over all the trajectories
-    # for i in range(num_agents):
-    #     trajectory = trajectories[i]
-    #
-    #     # Prepare lists to store x, y, and z values for plotting
-    #     x_vals = []
-    #     y_vals = []
-    #     z_vals = []
-    #
-    #     # Get the position of the agent at each time step
-    #     for t in t_values:
-    #         flat_output = trajectory.update(t)
-    #         x_vals.append(flat_output['x'][0])
-    #         y_vals.append(flat_output['x'][1])
-    #         z_vals.append(flat_output['x'][2])
-    #
-    #     # Plot the trajectory for this agent in 3D
-    #     ax.plot(x_vals, y_vals, z_vals, label=f"Agent {i}")
-    # ax.set_zlim(-lim, lim)
-    # ax.set_xlim(-lim, lim)
-    # ax.set_ylim(-lim, lim)
-    # # Labels and title
-    # ax.set_xlabel('X Position (m)')
-    # ax.set_ylabel('Y Position (m)')
-    # ax.set_zlabel('Z Position (m)')
-    # ax.set_title('Circular Trajectories with Sinusoidal Motion')
-    #
-    # # Show the plot with legends
-    # ax.legend()
-    # plt.show()
     return trajectories
 
 def execute_mpc(trajectories):
@@ -85,11 +46,7 @@ def execute_mpc(trajectories):
                     np.array([delays[2], 1]),
                     np.array([delays[3], 1]),
                     np.array([delays[4], 1]),
-                    np.array([delays[5], 1]),
-                    # np.array([delays[6], 1]),
-                    # np.array([delays[7], 1]),
-                    # np.array([delays[8], 1]),
-                    # np.array([delays[9], 1])
+                    np.array([delays[5], 1])
                           ]).T
 
     gamma_all = np.vstack((np.arange(x0_gamma[0,0], (K+1)*h+x0_gamma[0,0], h),
@@ -97,11 +54,7 @@ def execute_mpc(trajectories):
                            np.arange(x0_gamma[0,2], (K+1)*h+x0_gamma[0,2], h),
                            np.arange(x0_gamma[0,3], (K+1)*h+x0_gamma[0,3], h),
                            np.arange(x0_gamma[0,4], (K+1)*h+x0_gamma[0,4], h),
-                           np.arange(x0_gamma[0,5], (K+1)*h+x0_gamma[0,5], h),
-                           # np.arange(x0_gamma[0, 6], (K + 1) * h + x0_gamma[0, 6], h),
-                           # np.arange(x0_gamma[0, 7], (K + 1) * h + x0_gamma[0, 7], h),
-                           # np.arange(x0_gamma[0, 8], (K + 1) * h + x0_gamma[0, 8], h),
-                           # np.arange(x0_gamma[0, 9], (K + 1) * h + x0_gamma[0, 9], h)
+                           np.arange(x0_gamma[0,5], (K+1)*h+x0_gamma[0,5], h)
                            ))
 
     gamma_all_new = gamma_all.copy()
@@ -118,12 +71,14 @@ def execute_mpc(trajectories):
     flats = [None] * num_agents
     controls = [None] * num_agents
     x0 = [None] * num_agents
+    desired_trajectories = [None]*num_agents
     t = 0
 
     for i in range(num_agents):
         mav[i] = Multirotor(quad_params)
         controller[i] = SE3Control(quad_params)
         # wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration = wind_duration)
+
         # Init mav at the first waypoint for the trajectory.
         x0[i] = {'x': trajectories[i].update(x0_gamma[0][i])["x"],
               'v': trajectories[i].update(x0_gamma[0][i])["x_dot"],   #TODO: check gamma_dot = 1 is implemented here?
@@ -136,6 +91,7 @@ def execute_mpc(trajectories):
         states[i] = [x0[i]]
         flats[i] = [trajectories[i].update(x0_gamma[0][i])]
         controls[i] = [controller[i].update(time[i][-1], states[i][-1], flats[i][-1])]
+        desired_trajectories[i] = [trajectories[i].update(0)["x"]]
 
     min_distances = []
     while True:
@@ -144,6 +100,7 @@ def execute_mpc(trajectories):
         gamma_all = gamma_all_new.copy()
         min_dist = np.inf
         for i in range(num_agents):
+            desired_trajectories[i].append(trajectories[i].update(0 + t*time_step)["x"])
             mpc = mpcs[i]
             # in case of wind uncomment the following line
             # states[i][-1]["wind"] = wind[i].update(t, i, drones_with_wind)
@@ -159,7 +116,7 @@ def execute_mpc(trajectories):
                         distance = np.linalg.norm(pos_i - pos_j)
                         if distance <= dupc[i]:
                             x_min = x_minimums[i]
-            #stroing minimum distances for plotting
+            #storing minimum distances for plotting
             for j in range(num_agents):
                 if i != j:
                     pos_i = np.asarray(actual_state["x"])
@@ -179,7 +136,39 @@ def execute_mpc(trajectories):
             print(t)
         t += 1
         min_distances.append(min_dist)
-    return time, states,  flats, controls, x, u, cost, t, min_distances
+
+
+    with open("log/gamma.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        for i in range(x[:, 0, 0].size):
+            writer.writerow(x[i, 0, :])
+    with open("log/gamma-dot.csv", "w", newline="") as f2:
+        writer = csv.writer(f2)
+        for i in range(x[:, 1, 1].size):
+            writer.writerow(x[i, 1, :])
+    with open("log/gamma-dot-dot.csv", "w", newline="") as f3:
+        writer = csv.writer(f3)
+        for i in range(u[:, 0, 0].size):
+            writer.writerow(u[i, 0, :])
+    with open("log/xyz.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        num_time_points = len(states[0])  # Assuming all agents have the same number of time points
+        for t in range(num_time_points):
+            row = []
+            for idx in range(num_agents):
+                row.extend([states[idx][t]["x"][0], states[idx][t]["x"][1], states[idx][t]["x"][2]])
+            writer.writerow(row)
+    with open("log/xyz_desired.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        num_time_points = len(desired_trajectories[0])  # Assuming all agents have the same number of time points
+        for t in range(num_time_points):
+            row = []
+            for idx in range(num_agents):
+                row.extend([desired_trajectories[idx][t][0], desired_trajectories[idx][t][1], desired_trajectories[idx][t][2]])
+            writer.writerow(row)
+
+
+    return time, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories
 
 def plots(x, u, cost, t, min_distances):
     # 2D plots
@@ -188,7 +177,6 @@ def plots(x, u, cost, t, min_distances):
         nonzero_indices = np.nonzero(x[:t, 0, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
         plt.plot(time_values, x[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
-    # plt.title(r'${{\gamma}_i}(t)$')
     plt.xlabel('t (s)')
     plt.ylabel(r'${{\gamma}_i}(t)$')
     plt.legend()
@@ -200,7 +188,6 @@ def plots(x, u, cost, t, min_distances):
         nonzero_indices = np.nonzero(x[:t, 1, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
         plt.plot(time_values, x[:t, 1, i][nonzero_indices], label=f'UAV {i+1}')
-    # plt.title(r'$\dot{{{\gamma}_i}(t)}$')
     plt.xlabel('t (s)')
     plt.ylabel(r'$\dot{{{\gamma}_i}(t)}$')
     plt.legend()
@@ -212,7 +199,6 @@ def plots(x, u, cost, t, min_distances):
         nonzero_indices = np.nonzero(u[:t, 0, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
         plt.plot(time_values, u[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
-    # plt.title(r'$\ddot{{{\gamma}_i}(t)}$')
     plt.xlabel('t (s)')
     plt.ylabel(r'$\ddot{{{\gamma}_i}(t)}$')
     plt.legend()
@@ -224,7 +210,6 @@ def plots(x, u, cost, t, min_distances):
         nonzero_indices = np.nonzero(cost[:t, i])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
         plt.plot(time_values, cost[:t, i][nonzero_indices], label=f'UAV {i+1}')
-    # plt.title('Cost')
     plt.xlabel('t (s)')
     plt.ylabel('Cost')
     plt.legend()
@@ -236,12 +221,12 @@ def plots(x, u, cost, t, min_distances):
         nonzero_indices = np.nonzero(min_distances[:t])
         time_values = nonzero_indices[0] * time_step  # Convert indices to time
         plt.plot(time_values, min_distances[:t])
-    plt.title("Closest Distance Between Any Two UAVs Over Time")
     plt.xlabel('t (s)')
     plt.ylabel('Distance')
     plt.legend()
     plt.grid(True)
     plt.savefig('plots/Distances.png', dpi=300)
+
 
 def plot_videos(x, u, cost, t):
     # Function to update the plot for each frame
@@ -325,12 +310,13 @@ def plot_videos(x, u, cost, t):
 
 
 
+
 def main():
     # Construct the world.
     world = World.empty([-lim, lim, -lim, lim, -lim, lim])
 
     trajectories = generate_trajectories()
-    time, states,  flats, controls, x, u, cost, t, min_distances = execute_mpc(trajectories)
+    time, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories = execute_mpc(trajectories)
 
     for i in range(num_agents):
         time[i]        = np.array(time[i], dtype=float)
@@ -351,6 +337,7 @@ def main():
     all_pos = np.stack(all_pos, axis=1)
     all_wind = np.stack(all_wind, axis=1)
     all_rot = np.stack(all_rot, axis=1)
+
     # Animate.
     ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation video")
 
@@ -362,9 +349,17 @@ def main():
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
     for mav in range(all_pos.shape[1]):
+        # Plot desired trajectories with dashed lines
+        # x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
+        # y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
+        #
+        # # Plot the desired trajectory with dashed lines
+        # ax.plot(x_coords, y_coords, linestyle='--', color='black', label='Desired trajectory' if mav == 0 else '')
+
         ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav], label=f'UAV {mav+1}')
         ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
                 markerfacecolor=colors[mav], markeredgecolor='k')
+
 
     x_ticks = np.linspace(-lim, lim, 5)
     y_ticks = np.linspace(-lim, lim, 5)
@@ -374,14 +369,11 @@ def main():
     ax.set_yticks(y_ticks)
     ax.set_zticks(z_ticks)
     ax.legend(loc='upper right', fontsize=8)
-
-    # Set font size for the ticks
-    ax.tick_params(axis='both', which='major', labelsize=6)  # Adjust size here
-    ax.tick_params(axis='z', which='major', labelsize=6)  # Adjust size here
+    ax.tick_params(axis='both', which='major', labelsize=6)
+    ax.tick_params(axis='z', which='major', labelsize=6)
     ax.set_xlabel('X (m)', fontsize=10)
     ax.set_ylabel('Y (m)', fontsize=10)
     ax.set_zlabel('Z (m)', fontsize=10)
-    # Enable the grid
     ax.grid(True)
 
     fig.savefig('plots/trajectories.jpg', dpi=300)
@@ -392,41 +384,54 @@ def main():
         ax2.plot(all_pos[:t, mav, 1], all_pos[:t, mav, 0], color=colors[mav], label=f'UAV {mav + 1}')
         ax2.plot(all_pos[-1, mav, 1], all_pos[-1, mav, 0], '*', markersize=10,
                  markerfacecolor=colors[mav], markeredgecolor='k')
+        # Mark the starting point with a triangle
+        ax2.plot(all_pos[0, mav, 1], all_pos[0, mav, 0], 'o', markersize=5,
+                 markerfacecolor='red', markeredgecolor='black')
 
     # Set axis labels and limits
     ax2.set_xlim(-lim, lim)
     ax2.set_ylim(-lim, lim)
-
-    # Set ticks for the 2D plot
     ax2.set_xticks(np.linspace(-lim, lim, 5))
     ax2.set_yticks(np.linspace(-lim, lim, 5))
-
-    # Label the axes
     ax2.set_xlabel('Y (m)', fontsize=10)
     ax2.set_ylabel('X (m)', fontsize=10)
-
-    # Enable the grid
     ax2.grid(True)
-
-    # Add a legend
     ax2.legend(loc='lower right', fontsize=8)
-
-    # Set font size for ticks
     ax2.tick_params(axis='both', which='major', labelsize=6)
-
-    # Save the 2D plot
     fig2.savefig('plots/trajectories_2d.jpg', dpi=300)
 
-    # # Plot the positions of each agent in 3D, alongside collision events (when applicable)
-    # trajectory_points = [np.array([traj.update(t)['x'] for t in np.linspace(0, 2 * np.pi, 500)]) for traj in
-    #                      trajectories]
 
+    fig3, ax3 = plt.subplots()
+    for mav in range(all_pos.shape[1]):
+        # Plot desired trajectories with dashed lines
+        x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
+        y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
 
+        # Plot the desired trajectory with dashed lines
+        ax3.plot(y_coords, x_coords, linestyle='--', color='black')
+
+        ax3.plot(all_pos[:t, mav, 1], all_pos[:t, mav, 0], color=colors[mav], label=f'UAV {mav + 1}')
+        ax3.plot(all_pos[-1, mav, 1], all_pos[-1, mav, 0], '*', markersize=10,
+                 markerfacecolor=colors[mav], markeredgecolor='k')
+        ax3.plot(all_pos[0, mav, 1], all_pos[0, mav, 0], 'o', markersize=5,
+                 markerfacecolor='red', markeredgecolor='black')
+
+    # Set axis labels and limits
+    ax3.set_xlim(-lim, lim)
+    ax3.set_ylim(-lim, lim)
+    ax3.set_xticks(np.linspace(-lim, lim, 5))
+    ax3.set_yticks(np.linspace(-lim, lim, 5))
+    ax3.set_xlabel('Y (m)', fontsize=10)
+    ax3.set_ylabel('X (m)', fontsize=10)
+    ax3.grid(True)
+    ax3.legend(loc='lower right', fontsize=8)
+    ax3.tick_params(axis='both', which='major', labelsize=6)
+    fig3.savefig('plots/trajectories_2d_with_desired.jpg', dpi=300)
 
     world.draw(ax)
 
     plots(x, u, cost, t, min_distances)
-    # plot_videos(x, u, cost, t)
+    plot_videos(x, u, cost, t)
 
 if __name__ == "__main__":
     main()
