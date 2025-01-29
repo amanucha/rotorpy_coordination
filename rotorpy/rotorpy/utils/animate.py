@@ -76,7 +76,7 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
 
     # Temporal style.
     rtf = 1.0 # real time factor > 1.0 is faster than real time playback
-    render_fps = 30
+    render_fps = 50
 
     # Normalize the wind by the max of the wind magnitude on each axis, so that the maximum length of the arrow is decided by the scale factor
     wind_mag = np.max(np.linalg.norm(wind, axis=-1), axis=1)             # Get the wind magnitude time series
@@ -107,9 +107,9 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
         fig = plt.figure('Animation')
     fig.clear()
     ax = fig.add_subplot(projection='3d')
-    ax.set_xlim([np.min(position[:, :, 0])*5, np.max(position[:, :, 0])*5])  # Set x-axis limits
-    ax.set_ylim([np.min(position[:, :, 1])*5, np.max(position[:, :, 1])*5])  # Set y-axis limits
-    ax.set_zlim([np.min(position[:, :, 2])*5, np.max(position[:, :, 2])*5])  # Set z-axis limits
+    ax.set_xlim([np.min(position[:, :, 0]), np.max(position[:, :, 0])])  # Set x-axis limits
+    ax.set_ylim([np.min(position[:, :, 1]), np.max(position[:, :, 1])])  # Set y-axis limits
+    ax.set_zlim([np.min(position[:, :, 2]), np.max(position[:, :, 2])])  # Set z-axis limits
 
     if not show_axes:
         ax.set_axis_off()
@@ -119,18 +119,31 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
     world_artists = world.draw(ax)
 
     # title_artist = ax.set_title('t = {}'.format(time[0]))
-
     def init():
         ax.draw(fig.canvas.get_renderer())
         # return world_artists + list(cquad.artists) + [title_artist]
         #return world_artists + [title_artist] + [q.artists for q in quads]
         return world_artists + [q.artists for q in quads]
 
+    traveled_paths = [np.zeros((0, 3)) for _ in range(len(quads))]  # Initialize empty lists for paths
+
     def update(frame):
         # title_artist.set_text('t = {:.2f}'.format(time[frame]))
+        colors = plt.cm.tab10(range(position.shape[1]))
         for i, quad in enumerate(quads):
             quad.transform(position=position[frame,i,:], rotation=rotation[frame,i,:,:], wind=wind[frame,i,:])
-        # [a.do_3d_projection(fig.canvas.get_renderer()) for a in quad.artists]   # No longer necessary in newer matplotlib?
+
+            # Add the current position to the traveled path
+            traveled_paths[i] = np.vstack((traveled_paths[i], position[frame, i, :]))
+
+            # Plot the traveled path
+            x, y, z = traveled_paths[i].T  # Unpack coordinates
+            ax.plot(x, y, z, color=colors[i], linewidth=0.5, alpha=0.7,
+                    label=f'Path {i + 1}' if frame == 0 else "")  # Plot path
+
+            # Ensure the artists for the quads are updated
+        fig.canvas.draw()
+            # [a.do_3d_projection(fig.canvas.get_renderer()) for a in quad.artists]   # No longer necessary in newer matplotlib?
         # return world_artists + list(quad.artists) + [title_artist]
         # return world_artists + [title_artist] + [q.artists for q in quads]
         return world_artists + [q.artists for q in quads]

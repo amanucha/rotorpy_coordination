@@ -23,21 +23,20 @@ time_step = h
 
 
 # tuning according to scenarios
-# delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
-# delays = [0.0,1.0,1.5,0.5,1.5,2.0, 4.0,4.0]
-delays = [0]*8
-t_final =  42 #70/np.pi
+delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
+# delays = [0]*8
+t_final =  70/np.pi #42
 num_agents = 6
-path_following = False
+path_following = True
 coeff = 0.05 #path following parameter coefficient
-cav = True
+cav = False
 coeff_f_i2 = 70
 coeff_agent = 1
 # wind = True
-du11 = 20.0  # Communication term, parameter of the phi function
+du11 = 7.0  # Communication term, parameter of the phi function
 # du21 = 6.0  # Collision Avoidance
-dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
-# dus = [1.0]*6
+# dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
+dus = [1.0]*6
 # dupc = [dus[i]/3 for i in range(len(dus))]
 # dupc = 2.5 #pace keeping term
 dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
