@@ -208,6 +208,9 @@ class DecreasingWind(object):
             wind_speed = 0
 
         # return np.array([-wind_speed, -wind_speed, -0.2*wind_speed])
+        # if i < 3:
+        #     return np.array([wind_speed, wind_speed, 0])
+        # else:
         return np.array([wind_speed, wind_speed, 0])
     
 if __name__=="__main__":

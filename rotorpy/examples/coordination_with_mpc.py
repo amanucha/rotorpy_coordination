@@ -2,6 +2,9 @@
 Imports
 """
 import csv
+import numpy as np
+import random
+import time
 from rotorpy.environments import Environment
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
@@ -17,16 +20,17 @@ from rotorpy.world import World
 from rotorpy.utils.animate import animate
 from rotorpy.simulate import merge_dicts
 from rotorpy.config import *
-import numpy as np
 from rotorpy.mpc import MPC
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
+
 def generate_trajectories():
     #circlar simple trajectories
-    trajectories = [CircularTraj(center = np.array([0,0,0]),radius =  radius* (i*1.2 + 1.5), z = z, freq = freq) for i in range(num_agents)]
-
+    trajectories = [CircularTraj(center = np.array([0,0,0]),radius =  radius* (i*0.5 + 0.8), z = z, freq = freq) for i in range(num_agents)]
+    # trajectories = [CircularTraj(center=np.array([0, 0, 0]), radius=radius * (i * 1.2 + 1.5), z=z, freq=freq) for i in
+    #                 range(num_agents)]
     # trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
     #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
     #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/6, pi_param = np.pi/2),
@@ -40,22 +44,15 @@ def execute_mpc(trajectories):
     mpcs = [MPC(nx=nx, nu=nu, h=h, K=K, T = T,
               trajs=trajectories, du=du11,
               A=A, B=B, agent_idx=i, num_agents=num_agents, delta = delta, cav = cav, path_following= path_following) for i in range(num_agents)]
+    x0_gamma = np.vstack([np.array([delays[i], 1]) for i in range(num_agents)]).T
+    gamma_all = np.vstack([np.arange(x0_gamma[0, i], (K + 1) * h + x0_gamma[0, i], h) for i in range(num_agents)])
 
-    x0_gamma = np.vstack([np.array([delays[0], 1]),
-                    np.array([delays[1], 1]),
-                    np.array([delays[2], 1]),
-                    np.array([delays[3], 1]),
-                    np.array([delays[4], 1]),
-                    np.array([delays[5], 1])
-                          ]).T
 
-    gamma_all = np.vstack((np.arange(x0_gamma[0,0], (K+1)*h+x0_gamma[0,0], h),
-                           np.arange(x0_gamma[0,1], (K+1)*h+x0_gamma[0,1], h),
-                           np.arange(x0_gamma[0,2], (K+1)*h+x0_gamma[0,2], h),
-                           np.arange(x0_gamma[0,3], (K+1)*h+x0_gamma[0,3], h),
-                           np.arange(x0_gamma[0,4], (K+1)*h+x0_gamma[0,4], h),
-                           np.arange(x0_gamma[0,5], (K+1)*h+x0_gamma[0,5], h)
-                           ))
+    # laplacian matrix
+    L = np.ones((num_agents, num_agents))
+    print(L)# Initialize all elements to 1
+    np.fill_diagonal(L, -(num_agents - 1))
+    print(L)
 
     gamma_all_new = gamma_all.copy()
     u = np.zeros((T, nu, num_agents))
@@ -66,7 +63,7 @@ def execute_mpc(trajectories):
     mav = [None] * num_agents
     controller = [None] * num_agents
     wind = [None] * num_agents
-    time = [None] * num_agents
+    times = [None] * num_agents
     states = [None] * num_agents
     flats = [None] * num_agents
     controls = [None] * num_agents
@@ -87,16 +84,52 @@ def execute_mpc(trajectories):
              # 'wind': np.array([0, 0, 0]),
              'wind': wind[i].update(0, i, drones_with_wind),
               'rotor_speeds': np.array([1788.53, 1788.53, 1788.53, 1788.53])}
-        time[i] = [x0_gamma[0][i]]
+        times[i] = [x0_gamma[0][i]]
         states[i] = [x0[i]]
         flats[i] = [trajectories[i].update(x0_gamma[0][i])]
-        controls[i] = [controller[i].update(time[i][-1], states[i][-1], flats[i][-1])]
+        controls[i] = [controller[i].update(times[i][-1], states[i][-1], flats[i][-1])]
         desired_trajectories[i] = [trajectories[i].update(0)["x"]]
 
     min_distances = []
+    execution_times = []
     while True:
-        if any(j[-1] >= t_final for j in time) or t >= T: # if any agent arrives, we break the loop
+        if any(j[-1] >= t_final for j in times) or t >= T: # if any agent arrives, we break the loop
             break
+        #TODO: change here add delay
+
+        def modify_laplacian(L):
+            n = L.shape[0]
+            for i in range(n):
+                for j in range(i + 1, n):
+                    if i != j:
+                        prob = np.random.normal(0.5,0.5)
+                        prob = np.clip(prob, 0, 1)
+                        value = 1 if prob >= 0.5 else 0
+
+                        # value = int(random.choice([0, 1]))
+
+                        L[i, j] = value
+                        L[j, i] = value
+                    else:
+                        L[i, j] = 0
+
+                off_diag_sum = 0
+                for k in range(n):
+                    if k != i:
+                        off_diag_sum += L[i, k]
+                L[i, i] = -off_diag_sum
+            return L
+
+        # L = np.zeros((num_agents, num_agents))
+        # randomly decide the 1's and o's
+        # the random decision is made each 5 second
+        if t % 10 == 0:
+            L = modify_laplacian(L)
+            print(f"Step {t}: Laplacian matrix L = \n{L}")
+            eigenvalues = np.linalg.eigvals(L)
+            print(f"Step {t}: Eigenvalues of L = {np.sort(eigenvalues)}")
+
+        gamma_history = gamma_all
         gamma_all = gamma_all_new.copy()
         min_dist = np.inf
         for i in range(num_agents):
@@ -124,18 +157,26 @@ def execute_mpc(trajectories):
                     distance = np.linalg.norm(pos_i - pos_j)
                     if distance <= min_dist:
                         min_dist = distance
-            u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i)
+
+            start_time = time.time()
+            u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_history, x_max, x_min, u_max, u_min, actual_state, i, L)
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
             approx_x = A @ mpc.x_buffer[-1][:, -1]
             gamma_all_new[i, :] = np.hstack([mpc.x_buffer[-1][0, 1:], approx_x[0]])
+            end_time = time.time()
+            execution_times.append(end_time - start_time)
 
-            time[i].append(x[t, 0, i])
+
+            times[i].append(x[t, 0, i])
             states[i].append(actual_state)
             flats[i].append(trajectories[i].update(x[t, 0, i]))  # x,v, yaw, etc, from trajectory with the current gamma
-            controls[i].append(controller[i].update(time[i][-1], states[i][-1], flats[i][-1]))
+            controls[i].append(controller[i].update(times[i][-1], states[i][-1], flats[i][-1]))
             print(t)
         t += 1
         min_distances.append(min_dist)
+    mean_execution_time = np.mean(execution_times)
+    print(f"Mean execution time: {mean_execution_time:.6f} seconds")
+
 
 
     with open("log/gamma.csv", "w", newline="") as f:
@@ -179,7 +220,7 @@ def execute_mpc(trajectories):
         for dist_val in range(len(min_distances)):
             writer.writerow([min_distances[dist_val]])
 
-    return time, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories
+    return times, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories
 def plots(x, u, cost, t, min_distances):
     # Set figure size to 1920x1440 pixels
     figsize = (6.4, 4.8)  # Dimensions in inches for 1920x1440 at 300 DPI
@@ -197,7 +238,7 @@ def plots(x, u, cost, t, min_distances):
     plt.yticks(fontsize=14)
     plt.locator_params(axis='x', nbins=6)
     plt.locator_params(axis='y', nbins=6)
-    plt.legend(fontsize=14)
+    # plt.legend(fontsize=14)
     plt.grid(True)
     plt.tight_layout()
     plt.savefig('plots/Gammas.png', dpi=dpi)
@@ -213,7 +254,7 @@ def plots(x, u, cost, t, min_distances):
     plt.yticks(fontsize=14)
     plt.locator_params(axis='x', nbins=6)
     plt.locator_params(axis='y', nbins=6)
-    plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(1, 1.02))
+    # plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(1, 1.02))
     plt.grid(True)
     plt.tight_layout()
     plt.savefig('plots/Gamma_Dots.png', dpi=dpi)
@@ -229,7 +270,7 @@ def plots(x, u, cost, t, min_distances):
     plt.yticks(fontsize=14)
     plt.locator_params(axis='x', nbins=6)
     plt.locator_params(axis='y', nbins=6)
-    plt.legend(fontsize=14)
+    # plt.legend(fontsize=14)
     plt.grid(True)
     plt.tight_layout()
     plt.savefig('plots/Gamma_Dot_Dots.png', dpi=dpi)
@@ -245,7 +286,7 @@ def plots(x, u, cost, t, min_distances):
     plt.yticks(fontsize=14)
     plt.locator_params(axis='x', nbins=6)
     plt.locator_params(axis='y', nbins=6)
-    plt.legend(fontsize=14)
+    # plt.legend(fontsize=14)
     plt.grid(True)
     plt.tight_layout()
     plt.savefig('plots/Costs.png', dpi=dpi)
@@ -295,7 +336,8 @@ def main():
     all_rot = np.stack(all_rot, axis=1)
 
     # Animate.
-    #ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation video")
+    # ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= None)
+    # plt.show()
 
 
 
@@ -334,7 +376,7 @@ def main():
     ax.set_ylabel('Y (m)', fontsize=16)
     ax.set_zlabel('Z (m)', fontsize=16)
     ax.grid(True)
-    plt.tight_layout()
+    # plt.tight_layout()
 
     fig.savefig('plots/trajectories.jpg', dpi=300)
     fig2, ax2 = plt.subplots(figsize = figsize)
@@ -361,7 +403,7 @@ def main():
     ax2.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
 
     # Adjust layout to ensure the legend fits in the figure
-    plt.tight_layout()
+    # plt.tight_layout()
 
     ax2.tick_params(axis='both', which='major', labelsize=14)
     fig2.savefig('plots/trajectories_2d.jpg', dpi=300)

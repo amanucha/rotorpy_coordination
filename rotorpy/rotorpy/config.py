@@ -5,7 +5,7 @@ width = 0.8  #param for lissajeous trajectory
 length = 8 #param for lissajeous trajectory
 a = 0.5
 b = 0.25
-lim = 10 # specify the size of the world
+lim = 25 # specify the size of the world
 radius = 1
 z = 1
 freq = (np.pi/70)
@@ -23,26 +23,38 @@ time_step = h
 
 
 # tuning according to scenarios
-delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
+delays = [4.5, 6, 0, 3.5, 2.5, 5, 3.5, 6, 2, 4, 5.5, 1, 6, 3.5, 2, 5.5, 3.8, 5.7, 3.3, 0, 4.2, 0.5, 1.2, 3.2, 0, 5.7, 2.5, 6.2, 1.8, 4.3, 5.8, 1.2, 6.5, 3.4, 2.6, 5.6, 0.9, 0, 3.4, 0]
+# delays = [2.0,1.0,0.0,3.5,0.0,3.0, 4.0, 3.0, 2.0, 0]
 # delays = [0]*8
 t_final =  70/np.pi #42
-num_agents = 6
+# t_final = 8
+num_agents = 10
 path_following = True
 coeff = 0.05 #path following parameter coefficient
 cav = False
 coeff_f_i2 = 70
 coeff_agent = 1
 # wind = True
-du11 = 7.0  # Communication term, parameter of the phi function
+du11 = 50
+# du11 = 7.0  # Communication term, parameter of the phi function
 # du21 = 6.0  # Collision Avoidance
 # dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
-dus = [1.0]*6
+dus = [1.0]*num_agents
 # dupc = [dus[i]/3 for i in range(len(dus))]
 # dupc = 2.5 #pace keeping term
 dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
-drones_with_wind = [4,5]
-wind_duration = 10/time_step
+
+#for the rebuttal
+drones_with_wind = [0,1,2,3,4,5, 6, 7, 8, 9, 10]
+wind_duration = 15/time_step
 initial_wind_speed = 5
+
+communication_is_disturbed = True
+
+# for the paper
+# drones_with_wind = [4,5]
+# wind_duration = 10/time_step
+# initial_wind_speed = 5
 
 # u_min = [-15]
 # u_max = [15]
