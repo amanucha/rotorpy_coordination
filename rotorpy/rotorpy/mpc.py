@@ -16,7 +16,7 @@ class MPC:
         self.num_agents = num_agents
         self.trajs = trajs
         self.du = du11
-        self.du2 = dus[self.agent_idx]
+        # self.du2 = dus[self.agent_idx]
         self.delta = delta  # parameter for path following
         self.x_prev = ca.DM.zeros(self.nu * self.K + self.nx * (self.K + 1), 1)
         self.x_buffer = []
@@ -159,11 +159,18 @@ class MPC:
         cost += self.objective_terminal(x[:, self.K], gamma_all[:, self.K], L)
 
         # Set up the NLP problem
-        nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
-               'f': cost,
-               'g': ca.vertcat(*const),
-               'p': ca.vertcat(x0, ca.vec(gamma_all), ca.vec(L))
-               }
+        if communication_is_disturbed:
+            nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
+                'f': cost,
+                'g': ca.vertcat(*const),
+                'p': ca.vertcat(x0, ca.vec(gamma_all), ca.vec(L))
+                }
+        else:
+            nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
+                'f': cost,
+                'g': ca.vertcat(*const),
+                'p': ca.vertcat(x0, ca.vec(gamma_all))
+                }
         opts = {
             'ipopt.print_level': 0,
             'print_time': 0
@@ -194,13 +201,20 @@ class MPC:
             # gamma_all[self.agent_idx, :] -= np.array(alpha_bar).flatten()
 
         # Solve the problem
-        sol = self.solver(x0=self.x_prev,
-                          p=ca.vertcat(x, ca.vec(gamma_all), ca.vec(L)),
-                          lbg=[0] * self.nx * (self.K + 1),
-                          ubg=[0] * self.nx * (self.K + 1),
-                          lbx=u_min * self.K + x_min * (self.K + 1),
-                          ubx=u_max * self.K + x_max * (self.K + 1))
-
+        if communication_is_disturbed:
+            sol = self.solver(x0=self.x_prev,
+                            p=ca.vertcat(x, ca.vec(gamma_all), ca.vec(L)),
+                            lbg=[0] * self.nx * (self.K + 1),
+                            ubg=[0] * self.nx * (self.K + 1),
+                            lbx=u_min * self.K + x_min * (self.K + 1),
+                            ubx=u_max * self.K + x_max * (self.K + 1))
+        else:
+            sol = self.solver(x0=self.x_prev,
+                            p=ca.vertcat(x, ca.vec(gamma_all)),
+                            lbg=[0] * self.nx * (self.K + 1),
+                            ubg=[0] * self.nx * (self.K + 1),
+                            lbx=u_min * self.K + x_min * (self.K + 1),
+                            ubx=u_max * self.K + x_max * (self.K + 1))
         # Extract and return results
         U_opt = np.array(ca.reshape(sol['x'][:self.nu * self.K], self.nu, self.K))
         X_opt = np.array(ca.reshape(sol['x'][self.nu * self.K:], self.nx, self.K + 1))
