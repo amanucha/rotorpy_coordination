@@ -6,8 +6,8 @@ Running the Simulation The primary entry point for the cooperative MPC simulatio
 
 Core Components
 
-Main Script: rotorpy/examples/coordination_with_mpc.py
+    Main Script: rotorpy/examples/coordination_with_mpc.py
 
-MPC Logic: rotorpy/rotorpy/mpc.py
+    MPC Logic: rotorpy/rotorpy/mpc.py
 
-Configs: rotorpy/rotorpy/config.py
+    Configs: rotorpy/rotorpy/config.py
