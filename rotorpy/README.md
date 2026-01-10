@@ -1,16 +1,19 @@
-This repository implements the simulations for the project: "Game-Theoretic Cooperative Path Following for Time-Critical Missions."
+# Modules
 
-Prerequisites
-Ensure you have RotorPy installed and configured.
+RotorPy is a simple dynamics simulator for teaching aerial robotics planning and control and preliminary probing of interesting research questions. It is organized into a set of modules: 
 
-Running the Simulation
-The primary entry point for the cooperative MPC simulation is:
-rotorpy/examples/coordination_with_mpc.py
+* **Vehicles** - Contains the continuous-time dynamics for the UAV of interest. 
+* **Sensors** - Transforms ground truth vehicle state into noisy and biased measurements. 
+* **Worlds** - Contains `json` map files for constructing world bounds and obstacles. 
+* **Controllers** - Stabilizes the vehicle to a trajectory. 
+* **Trajectories** - Dictates the desired motion of the vehicle in time. 
+* **Wind** - Custom spatial and/or temporal vector fields that add external disturbances to the vehicle.  
+* **Estimators** - Use measurements from sensors and a model of the dynamics to filter or estimate beliefs of states or parameters. 
 
-Core Components
+These modules come together in `environment.py` which contains the necessary functions for instantiation, execution, and plotting/saving. The simulation is actually carried out in `simulate.py` which will step the vehicle forward in time, governed by the dynamics, trajectory, controller, and sensor measurements. 
 
-    Main Script: rotorpy/examples/coordination_with_mpc.py
+# License Note
 
-    MPC Logic: rotorpy/rotorpy/mpc.py
+The package rotorpy itself is released under the MIT License. Contributions of improvements, bug fixes, and documentation are welcome. Course instructors would enjoy hearing if you use RotorPy as a template for other projects.
 
-    Configs: rotorpy/rotorpy/config.py
+Please note that RotorPy (and its open source license) does not include course materials such as assignments, solutions, and server integrations.
