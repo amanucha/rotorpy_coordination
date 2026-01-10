@@ -137,20 +137,17 @@ def simulate(world, initial_state, vehicle, controller, trajectory, wind_profile
     return (time, state, control, flat, imu_measurements, imu_gt, mocap_measurements, state_estimate, exit_status)
 
 def merge_dicts(dicts_in):
-    """
-    Concatenates contents of a list of N state dicts into a single dict by
-    prepending a new dimension of size N. This is more convenient for plotting
-    and analysis. Requires dicts to have consistent keys and have values that
-    are numpy arrays.
-    """
     dict_out = {}
     for k in dicts_in[0].keys():
-        dict_out[k] = []
-        for d in dicts_in:
-            dict_out[k].append(d[k])
-        dict_out[k] = np.array(dict_out[k])
+        # Ensure every single entry is flattened to 1D so they match
+        data_list = [np.array(d[k]).ravel() for d in dicts_in]
+        
+        try:
+            dict_out[k] = np.array(data_list)
+        except ValueError:
+            # If they have different lengths (e.g., 3 elements vs 4 elements)
+            dict_out[k] = np.array(data_list, dtype=object)
     return dict_out
-
 
 def traj_end_exit(initial_state, trajectory, using_vio = False):
     """

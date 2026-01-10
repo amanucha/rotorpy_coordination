@@ -76,7 +76,7 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
 
     # Temporal style.
     rtf = 1.0 # real time factor > 1.0 is faster than real time playback
-    render_fps = 50
+    render_fps = 10
 
     # Normalize the wind by the max of the wind magnitude on each axis, so that the maximum length of the arrow is decided by the scale factor
     wind_mag = np.max(np.linalg.norm(wind, axis=-1), axis=1)             # Get the wind magnitude time series
@@ -165,7 +165,7 @@ def animate(time, position, rotation, wind, animate_wind, world, filename=None, 
         ani.save(path,
                  writer='ffmpeg',
                  fps=render_fps,
-                 dpi=300)
+                 dpi=50)
         if close_on_finish:
             plt.close(fig)
             ani = None

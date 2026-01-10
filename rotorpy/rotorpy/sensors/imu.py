@@ -120,8 +120,12 @@ class Imu:
         accelerometer_measurement += self.accel_bias
         gyroscope_measurement += self.gyro_bias
         if with_noise:
-            accelerometer_measurement += self.rate_scale * np.random.normal(scale=np.abs(self.accel_variance))
-            gyroscope_measurement +=  self.rate_scale * np.random.normal(scale=np.abs(self.gyro_variance))
+            print("HELLLOOOOO ACCELOMWETETTE&RIEHRUH")
+            print(accelerometer_measurement)
+            accelerometer_measurement += self.rate_scale * np.random.normal(scale=np.abs(self.accel_variance)) *10
+            gyroscope_measurement +=  self.rate_scale * np.random.normal(scale=np.abs(self.gyro_variance)) * 10
+            print(accelerometer_measurement)
+
 
         return {'accel': accelerometer_measurement, 'gyro': gyroscope_measurement}
 

@@ -1,6 +1,8 @@
 import numpy as np
 import sys
 
+from rotorpy.config import time_step
+
 """
 Below are some default wind objects that might be useful inputs to the system.  
 """
@@ -208,8 +210,44 @@ class DecreasingWind(object):
             wind_speed = 0
 
         # return np.array([-wind_speed, -wind_speed, -0.2*wind_speed])
-        return np.array([wind_speed, wind_speed, 0])
-    
+        # if i < 3:
+        #     return np.array([wind_speed, wind_speed, 0])
+        # else:
+        return np.array([0, -wind_speed, 0])
+
+
+class StrongWind(object):
+    """
+    Wind decreases linearly with time, starting from 5 and reaching 0 at t = 5 seconds.
+    After t = 5, the wind remains at 0.
+    """
+
+    def __init__(self, initial_speed, wind_duration):
+        """
+        No additional parameters are required.
+        """
+        self.initial_speed = initial_speed  # Initial wind speed
+
+    def update(self, t, i, drones):
+        """
+        Given the present time and position of the multirotor, return the
+        current wind speed on all three axes.
+
+        The wind should be expressed in the world coordinates.
+        """
+        if (any(item == i for item in drones)):
+            wind_speed = self.initial_speed
+
+            if 0 <= t*time_step <= 5:
+                return np.array([0, wind_speed, 0])
+            elif 5 <= t*time_step <= 10:
+                return np.array([0, -wind_speed, 0])
+            else:
+                return np.array([0, 0, 0])
+        else:
+            return np.array([0, 0, 0])
+
+
 if __name__=="__main__":
     wind = ConstantWind(wx=1,wy=1,wz=1)
     print(wind.update(0,np.array([0,0,0])))

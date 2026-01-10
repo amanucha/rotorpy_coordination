@@ -48,13 +48,15 @@ class MPC:
 
 
 
-    def F_i0(self, x, gamma_all):
+    def F_i0(self, x, gamma_all, L):
         cost = 0
         gamma_i = x[0]
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
                 cost_temp = self.phi(dist) * (gamma_i - gamma_all[j]) ** 2
+                if communication_is_disturbed:
+                    cost_temp*= L[self.agent_idx, j]
                 if self.cav:
                     cost_temp *= self.phi3(dist)
                 cost += cost_temp
@@ -127,17 +129,17 @@ class MPC:
     def dynamics(self, x, u, x_next):
         return x_next - self.A @ x - self.B @ u
 
-    def objective(self, x, u, gamma_all):
+    def objective(self, x, u, gamma_all, L):
         gamma_dot = x[1]
-        obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all) + u ** 2
+        obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
         if self.cav:
             obj += coeff_f_i2*self.F_i2(x, gamma_all)
         return obj
 
-    def objective_terminal(self, x, gamma_all):
+    def objective_terminal(self, x, gamma_all, L):
         gamma_dot = x[1]
         # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
-        obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all)
+        obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all, L)
         return obj
 
     def setup_MPC(self):
@@ -145,29 +147,37 @@ class MPC:
         u = ca.SX.sym('u', self.nu, self.K)
         x0 = ca.SX.sym('x0', self.nx, 1)  # stores gamma and gamma_dot, initial states
         gamma_all = ca.SX.sym('gamma_all', self.num_agents, self.K + 1)
+        L = ca.SX.sym('L', self.num_agents, self.num_agents)
 
         const = [x0 - x[:, 0]]
         cost = 0
 
         for k in range(self.K):
             const.append(self.dynamics(x[:, k], u[:, k], x[:, k + 1]))
-            cost += self.h * self.objective(x[:, k], u[:, k], gamma_all[:, k])
+            cost += self.h * self.objective(x[:, k], u[:, k], gamma_all[:, k], L)
 
-        cost += self.objective_terminal(x[:, self.K], gamma_all[:, self.K])
+        cost += self.objective_terminal(x[:, self.K], gamma_all[:, self.K], L)
 
         # Set up the NLP problem
-        nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
-               'f': cost,
-               'g': ca.vertcat(*const),
-               'p': ca.vertcat(x0, ca.vec(gamma_all))
-               }
+        if communication_is_disturbed:
+            nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
+                'f': cost,
+                'g': ca.vertcat(*const),
+                'p': ca.vertcat(x0, ca.vec(gamma_all), ca.vec(L))
+                }
+        else:
+            nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
+                'f': cost,
+                'g': ca.vertcat(*const),
+                'p': ca.vertcat(x0, ca.vec(gamma_all))
+                }
         opts = {
             'ipopt.print_level': 0,
             'print_time': 0
         }
         self.solver = ca.nlpsol('solver', 'ipopt', nlp, opts)
 
-    def solve(self, x, gamma_all, x_max, x_min, u_max, u_min, actual_state, agent_idx):
+    def solve(self, x, gamma_all, x_max, x_min, u_max, u_min, actual_state, agent_idx, L):
         # add error path following to gamma_all
         dist = self.distance(x, actual_state, agent_idx)
         x_d_dot = self.trajs[self.agent_idx].update(x[0])["x_dot"]  # take 1st index since it is the velocity returned from the trajectory,
@@ -182,20 +192,29 @@ class MPC:
 
             #version 2: adding the path-following error only to all future gammas
             # alpha_bar = ca.repmat(alpha_bar, self.K+1, 1)
+            # add something like this x[0] -= coeff*alpha_bar
             # gamma_all[self.agent_idx, :] -= np.array(alpha_bar*2).flatten()
 
             # version 3: expecting more error for future gammas
             # alpha_bar = ca.DM([0.01 * i for i in range(self.K + 1)]).reshape((self.K + 1, 1))
+            # add something like this x[0] -= coeff*alpha_bar
             # gamma_all[self.agent_idx, :] -= np.array(alpha_bar).flatten()
 
         # Solve the problem
-        sol = self.solver(x0=self.x_prev,
-                          p=ca.vertcat(x, ca.vec(gamma_all)),
-                          lbg=[0] * self.nx * (self.K + 1),
-                          ubg=[0] * self.nx * (self.K + 1),
-                          lbx=u_min * self.K + x_min * (self.K + 1),
-                          ubx=u_max * self.K + x_max * (self.K + 1))
-
+        if communication_is_disturbed:
+            sol = self.solver(x0=self.x_prev,
+                            p=ca.vertcat(x, ca.vec(gamma_all), ca.vec(L)),
+                            lbg=[0] * self.nx * (self.K + 1),
+                            ubg=[0] * self.nx * (self.K + 1),
+                            lbx=u_min * self.K + x_min * (self.K + 1),
+                            ubx=u_max * self.K + x_max * (self.K + 1))
+        else:
+            sol = self.solver(x0=self.x_prev,
+                            p=ca.vertcat(x, ca.vec(gamma_all)),
+                            lbg=[0] * self.nx * (self.K + 1),
+                            ubg=[0] * self.nx * (self.K + 1),
+                            lbx=u_min * self.K + x_min * (self.K + 1),
+                            ubx=u_max * self.K + x_max * (self.K + 1))
         # Extract and return results
         U_opt = np.array(ca.reshape(sol['x'][:self.nu * self.K], self.nu, self.K))
         X_opt = np.array(ca.reshape(sol['x'][self.nu * self.K:], self.nx, self.K + 1))

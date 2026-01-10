@@ -125,7 +125,7 @@ class SE3Control(object):
         # Desired thrust is force projects onto b3 axis.
         R = Rotation.from_quat(state['q']).as_matrix()
         b3 = R @ np.array([0, 0, 1])
-        F_des = F_des#.full().reshape(-1) #match the shape of b3 (3,)
+        F_des = np.array(F_des).reshape(3,)#.full().reshape(-1) #match the shape of b3 (3,)
         u1 = np.dot(F_des, b3)
 
         # Desired orientation to obtain force vector.
