@@ -1,8 +1,8 @@
-This repository implements the simulations for the project: "Game-Theoretic Cooperative Path Following for Time-Critical Missions."
+# Game-Theoretic Coordination For Time-Critical Missions of UAV Systems
 
-Ensure you have RotorPy installed and configured.
+This repository implements the simulations for the paper "Game-Theoretic Coordination For Time-Critical Missions of UAV Systems" by Mikayel Aramyan, Anna Manucharyan, Lusine Poghosyan, Rohith Madhavan, Tigran Bakaryan, and Naira Hovakimyan.
 
-Running the Simulation The primary entry point for the cooperative MPC simulation is: rotorpy/examples/coordination_with_mpc.py
+The primary entry point for the cooperative MPC simulation is: rotorpy/examples/coordination_with_mpc.py. Ensure you have RotorPy installed and configured.
 
 Core Components
 
