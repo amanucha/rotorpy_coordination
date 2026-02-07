@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from scipy.spatial.transform import Rotation
 import os
+#from scipy.spatial.transform import Rotation
 
 
 def unpack_sim_data(result):
@@ -92,7 +92,7 @@ def save_sim_data(result, filename="output.csv"):
     Saves the data in result as a csv file for post processing.
     """
 
-    if not (".csv" in filename):
+    if ".csv" not in filename:
         # Check whether or not filename contains .csv
         filename = filename + ".csv"
 
