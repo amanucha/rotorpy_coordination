@@ -164,7 +164,7 @@ class Environment():
             print("Error: cannot save if no results have been generated! Aborting save.")
             return
         else:
-            if not ".csv" in fname:
+            if ".csv" not in fname:
                 fname = fname + ".csv"
             path = os.path.join(os.path.dirname(__file__),'data_out',fname)
             dataframe = unpack_sim_data(self.result)

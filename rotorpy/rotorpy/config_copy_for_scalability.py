@@ -43,7 +43,7 @@ dus = [1.0]*num_agents
 # dupc = 2.5 #pace keeping term
 dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
 
-#for the rebuttal
+# for the rebuttal
 drones_with_wind = [0,1,2,3,4,5, 6, 7, 8, 9, 10]
 wind_duration = 15/time_step
 initial_wind_speed = 5
@@ -69,5 +69,5 @@ T = int(t_final/time_step)
 
 
 
-#pitfalls
-When the drones do not follow the desired trajectory exactly, it is usually because of the parameters of the trajectory(lissajeous) -- the main deeep reason should be further identified
+# pitfalls
+# When the drones do not follow the desired trajectory exactly, it is usually because of the parameters of the trajectory(lissajeous) -- the main deeep reason should be further identified
