@@ -235,7 +235,10 @@ def execute_mpc(trajectories):
                 #                                            actual_state, i, L)
 
             else:
-                u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                AAA = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                #u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                u[t, :, i]= AAA[0]
+                cost[t, i] = AAA[1].item()
 
 
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
