@@ -3,9 +3,8 @@ import casadi as ca
 from numpy.linalg import inv, norm
 import scipy.integrate
 from scipy.spatial.transform import Rotation
-from rotorpy.vehicles.hummingbird_params import quad_params
-
-import time
+#from rotorpy.vehicles.hummingbird_params import quad_params
+#import time
 
 """
 Multirotor models

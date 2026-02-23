@@ -115,11 +115,13 @@ def generate_mixed_trajectories():
     omega_6_1 = (2.0 * np.pi * 0.6) / DURATION_SCALE_FACTOR
     segments6.append({"duration": seg_duration, "type": "sin",  "params": {"p0": [0.0, initial_y, 0.0], "v": v_start_level, "axis": [0.0, 0.1, 0.0], "A": 1.0, "w": omega_6_1, "phi": 0.0}})
     
-    traj_temp = PiecewiseTrajectory(segments6); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments6)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 2.0 * DURATION_SCALE_FACTOR
     segments6.append({"duration": seg_duration, "type": "line", "params": {"p0": prev_p_end, "v": v_descend}}) # v_descend already scaled
     
-    traj_temp = PiecewiseTrajectory(segments6); prev_p_end, prev_v_end = traj_temp.get_end_state(1)
+    traj_temp = PiecewiseTrajectory(segments6)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(1)
     v_flatter_drift_original = np.array([base_vx_original, 0.0, -0.01]) 
     v_flatter_drift = v_flatter_drift_original / DURATION_SCALE_FACTOR
     seg_duration = 3.0 * DURATION_SCALE_FACTOR
@@ -142,13 +144,15 @@ def generate_mixed_trajectories():
     omega_1_1 = (2.0 * np.pi * 0.5) / DURATION_SCALE_FACTOR
     segments1.append({"duration": seg_duration, "type": "sin",  "params": {"p0": p_start, "v": v_start, "axis": [0.0, -0.1, 0.0], "A": 1.0, "w": omega_1_1, "phi": 0.0}})
     
-    traj_temp = PiecewiseTrajectory(segments1); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments1)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 3.0 * DURATION_SCALE_FACTOR
     v_line_1_2_original = np.array([base_vx_original, prev_v_end[1] * DURATION_SCALE_FACTOR, -0.03]) # Must re-scale prev_v_end[1]
     v_line_1_2 = v_line_1_2_original / DURATION_SCALE_FACTOR
     segments1.append({"duration": seg_duration, "type": "line", "params": {"p0": prev_p_end, "v": v_line_1_2}})
     
-    traj_temp = PiecewiseTrajectory(segments1); prev_p_end, prev_v_end = traj_temp.get_end_state(1)
+    traj_temp = PiecewiseTrajectory(segments1)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(1)
     seg_duration = seg_duration_original * DURATION_SCALE_FACTOR
     omega_1_3 = (2.0 * np.pi * 0.7) / DURATION_SCALE_FACTOR
     segments1.append({"duration": seg_duration, "type": "sin",  "params": {"p0": prev_p_end, "v": prev_v_end, "axis": [0.0, -0.08, 0.0], "A": 1.0, "w": omega_1_3, "phi": 0.0}})
@@ -170,14 +174,16 @@ def generate_mixed_trajectories():
     
     v_gentle_descend_original = np.array([base_vx_original, 0.0, -0.02])
     v_gentle_descend = v_gentle_descend_original / DURATION_SCALE_FACTOR
-    traj_temp = PiecewiseTrajectory(segments2); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments2)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 2.5 * DURATION_SCALE_FACTOR
     omega_2_2 = (2.0 * np.pi * 0.8) / DURATION_SCALE_FACTOR
     segments2.append({"duration": seg_duration, "type": "sin",  "params": {"p0": prev_p_end, "v": v_gentle_descend, "axis": [0.0, 0.0, 0.08], "A": 1.0, "w": omega_2_2, "phi": 0.0}})
     
     v_steeper_descend_original = np.array([base_vx_original, 0.0, -0.02])
     v_steeper_descend = v_steeper_descend_original / DURATION_SCALE_FACTOR
-    traj_temp = PiecewiseTrajectory(segments2); prev_p_end, prev_v_end = traj_temp.get_end_state(1)
+    traj_temp = PiecewiseTrajectory(segments2)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(1)
     seg_duration = 2.5 * DURATION_SCALE_FACTOR
     omega_2_3 = (2.0 * np.pi * 0.7) / DURATION_SCALE_FACTOR
     segments2.append({"duration": seg_duration, "type": "sin",  "params": {"p0": prev_p_end, "v": v_steeper_descend, "axis": [0.0, 0.0, 0.1], "A": 1.0, "w": omega_2_3, "phi": 0.0}})
@@ -195,14 +201,16 @@ def generate_mixed_trajectories():
     seg_duration = 2.0 * DURATION_SCALE_FACTOR
     segments3.append({"duration": seg_duration, "type": "line", "params": {"p0": p_start, "v": v_climb}}) # v_climb already scaled
     
-    traj_temp = PiecewiseTrajectory(segments3); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments3)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 2.0 * DURATION_SCALE_FACTOR
     # Must re-scale prev_v_end[1] from new scaled velocity to old velocity for proper scaling
     v_line_3_2_original = np.array([base_vx_original, prev_v_end[1] * DURATION_SCALE_FACTOR, -0.01]) 
     v_line_3_2 = v_line_3_2_original / DURATION_SCALE_FACTOR
     segments3.append({"duration": seg_duration, "type": "line", "params": {"p0": prev_p_end, "v": v_line_3_2}})
     
-    traj_temp = PiecewiseTrajectory(segments3); prev_p_end, prev_v_end = traj_temp.get_end_state(1)
+    traj_temp = PiecewiseTrajectory(segments3)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(1)
     seg3_duration_original = 3.0
     seg3_duration = seg3_duration_original * DURATION_SCALE_FACTOR
     required_z_disp = TARGET_Z_FINAL - prev_p_end[2] 
@@ -224,7 +232,8 @@ def generate_mixed_trajectories():
     seg_duration = 3.0 * DURATION_SCALE_FACTOR
     segments4.append({"duration": seg_duration, "type": "line", "params": {"p0": [0.0, initial_y, 0.0], "v": v_climb}}) # v_climb already scaled
     
-    traj_temp = PiecewiseTrajectory(segments4); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments4)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 4.0 * DURATION_SCALE_FACTOR
     omega_4_2 = (2.0 * np.pi * 0.6) / DURATION_SCALE_FACTOR
     segments4.append({"duration": seg_duration, "type": "sin",  "params": {"p0": prev_p_end, "v": prev_v_end, "axis": [0.0, 0.1, 0.0], "A": 1.0, "w": omega_4_2, "phi": 0.0}})
@@ -244,12 +253,14 @@ def generate_mixed_trajectories():
     omega_5_1 = (2.0 * np.pi * 0.6) / DURATION_SCALE_FACTOR
     segments5.append({"duration": seg_duration, "type": "sin",  "params": {"p0": [0.0, initial_y, 0.0], "v": v_climb_gentle, "axis": [0.0, 0.0, 0.05], "A": 1.0, "w": omega_5_1, "phi": 0.0}})
     
-    traj_temp = PiecewiseTrajectory(segments5); prev_p_end, prev_v_end = traj_temp.get_end_state(0)
+    traj_temp = PiecewiseTrajectory(segments5)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(0)
     seg_duration = 3.0 * DURATION_SCALE_FACTOR
     omega_5_2 = (2.0 * np.pi * 0.4) / DURATION_SCALE_FACTOR
     segments5.append({"duration": seg_duration, "type": "sin",  "params": {"p0": prev_p_end, "v": prev_v_end, "axis": [0.0, 0.2, 0.0], "A": 1.0, "w": omega_5_2, "phi": np.pi / 4}})
     
-    traj_temp = PiecewiseTrajectory(segments5); prev_p_end, prev_v_end = traj_temp.get_end_state(1)
+    traj_temp = PiecewiseTrajectory(segments5)
+    prev_p_end, prev_v_end = traj_temp.get_end_state(1)
     seg_duration = 2.0 * DURATION_SCALE_FACTOR
     segments5.append({"duration": seg_duration, "type": "line", "params": {"p0": prev_p_end, "v": prev_v_end}})
     p_start_final_seg = append_standard_alignment_segment_cubic(segments5, initial_y)

@@ -1,0 +1,94 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+*.tar.gz
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# IDE / Editor files
+# VSCode
+.vscode/
+# PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Jupyter / IPython
+.ipynb_checkpoints
+*.ipynb
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Scientific project outputs
+*.csv
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.mat
+*.png
+*.pdf
+*.svg
+
+# Temporary / cache
+*.tmp
+*.cache/
+*.bak
+
+# MyPy / type hints
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Pytest artifacts
+.pytest_cache/
+
+# CI artifacts
+ci_artifact.csv
+ci_summary.json
+test_plot.png
+
+# Optional: other miscellaneous
+*.out
+*.o
+*.class
+*.swp
+

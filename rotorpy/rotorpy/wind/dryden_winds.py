@@ -1,6 +1,6 @@
 import numpy as np
-import os
-import sys
+#import os
+#import sys
 
 # The Dryden Gust model is implemented using this package: 
 # https://github.com/goromal/wind-dynamics
