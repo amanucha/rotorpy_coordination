@@ -21,8 +21,7 @@ from scipy.interpolate import CubicSpline
 from mpl_toolkits.mplot3d import Axes3D
 from rotorpy.trajectories.bspline_mixed import BSplineMixed
 from pathlib import Path
-from rotorpy.generate_trajectories import generate_mixed_trajectories
-
+# from rotorpy.generate_trajectories import generate_mixed_trajectories
 
 def generate_trajectories():
     # non-homogenuous trajectories
@@ -477,16 +476,14 @@ def main():
                 label=f'UAV {mav + 1}')
         ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
                 markerfacecolor=colors[mav], markeredgecolor='k')
-
     x_ticks = np.arange(-9, 10, 3)
     y_ticks = np.arange(-9, 10, 3)
     z_ticks = np.arange(-5, 6, 3)
     ax.view_init(elev=20, azim=-45)
-    ax.set_xticks(x_ticks, fontsize=14)
-    ax.set_yticks(y_ticks, fontsize=14)
-    ax.set_zticks(z_ticks, fontsize=14)
-    ax.tick_params(axis='x', which='major', labelsize=6)
-    ax.tick_params(axis='y', which='major', labelsize=6)
+    ax.set_xticks(x_ticks)
+    ax.set_yticks(y_ticks)
+    ax.set_zticks(z_ticks)
+    ax.tick_params(axis='both', which='major', labelsize=6)
     ax.tick_params(axis='z', which='major', labelsize=6)
     ax.set_xlabel('X (m)', fontsize=16)
     ax.set_ylabel('Y (m)', fontsize=16)
@@ -496,7 +493,6 @@ def main():
     plt.tight_layout()
 
     fig.savefig('plots/trajectories.jpg', dpi=300)
-
     
     fig2, ax2 = plt.subplots(figsize=figsize)
     for mav in range(all_pos.shape[1]):
@@ -509,15 +505,15 @@ def main():
     ax2.set_autoscale_on(False)
     ax2.set_xlim(-lim, lim)
     ax2.set_ylim(-lim, lim)
-    ax2.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
-    ax2.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax2.set_xticks(np.linspace(-lim/2, lim/2, 5))
+    ax2.set_yticks(np.linspace(-lim/2, lim/2, 5))
     ax2.set_xlabel('Y (m)', fontsize=16)
     ax2.set_ylabel('X (m)', fontsize=16)
     ax2.grid(True)
-    plt.tight_layout()
     ax2.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
-    plt.tight_layout()
     ax2.tick_params(axis='both', which='major', labelsize=14)
+    
+    plt.tight_layout()
     fig2.savefig('plots/trajectories_2d.jpg', dpi=300)
 
     fig3, ax3 = plt.subplots(figsize=figsize)
@@ -535,14 +531,14 @@ def main():
     ax3.set_autoscale_on(False)
     ax3.set_xlim(-lim, lim)
     ax3.set_ylim(-lim, lim)
-    ax3.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
-    ax3.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax3.set_xticks(np.linspace(-lim/2, lim/2, 5))
+    ax3.set_yticks(np.linspace(-lim/2, lim/2, 5))
     ax3.set_xlabel('Y (m)', fontsize=16)
     ax3.set_ylabel('X (m)', fontsize=16)
     ax3.grid(True)
-    plt.tight_layout()
     ax3.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
     ax3.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
     fig3.savefig('plots/trajectories_2d_with_desired.jpg', dpi=300)
 
     world.draw(ax)
