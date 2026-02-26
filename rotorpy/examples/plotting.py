@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import os
 from rotorpy.config import * # Define the World class or a minimal mock if its 'draw' method is needed.
 
@@ -17,7 +16,7 @@ def generate_plots(plots_folder_name="simulation_results"):
     # Load the data
     data = np.load(data_file, allow_pickle=True)
     
-    all_time = data['all_time']
+    # all_time = data['all_time']
     all_pos = data['all_pos']
     x = data['x']
     u = data['u']
@@ -46,20 +45,20 @@ def generate_plots(plots_folder_name="simulation_results"):
     margin = 1.0 
     
     # 3D Trajectory Limits (X, Y, Z are columns 0, 1, 2 of all_pos)
-    x_min, x_max = all_pos[:t, :, 0].min(), all_pos[:t, :, 0].max()
-    y_min, y_max = all_pos[:t, :, 1].min(), all_pos[:t, :, 1].max()
-    z_min, z_max = all_pos[:t, :, 2].min(), all_pos[:t, :, 2].max()
+    # x_min, x_max = all_pos[:t, :, 0].min(), all_pos[:t, :, 0].max()
+    # y_min, y_max = all_pos[:t, :, 1].min(), all_pos[:t, :, 1].max()
+    # z_min, z_max = all_pos[:t, :, 2].min(), all_pos[:t, :, 2].max()
 
-    overall_min = min(x_min, y_min, z_min)
-    overall_max = max(x_max, y_max, z_max)
+    # overall_min = min(x_min, y_min, z_min)
+    # overall_max = max(x_max, y_max, z_max)
     
     # Apply margin and ROUND TO NEAREST INTEGER for 3D plot limits
-    lower_bound_3d = np.floor(overall_min - margin)
-    upper_bound_3d = np.ceil(overall_max + margin)
+    # lower_bound_3d = np.floor(overall_min - margin)
+    # upper_bound_3d = np.ceil(overall_max + margin)
 
-    x_lim = [lower_bound_3d, upper_bound_3d]
-    y_lim = [lower_bound_3d, upper_bound_3d]
-    z_lim = [lower_bound_3d, upper_bound_3d]
+    # x_lim = [lower_bound_3d, upper_bound_3d]
+    # y_lim = [lower_bound_3d, upper_bound_3d]
+    # z_lim = [lower_bound_3d, upper_bound_3d]
 
 
     # 2D Trajectory Limits 
@@ -173,7 +172,7 @@ def generate_plots(plots_folder_name="simulation_results"):
     ax.set_zlim(z_lim_3d)
     desired_label_added = False
     for mav in range(all_pos.shape[1]):
-        desired_label = f'Desired Paths' if not desired_label_added else None
+        desired_label = 'Desired Paths' if not desired_label_added else None
         ax.plot(desired_x_coords[mav], desired_y_coords[mav], desired_z_coords[mav], linestyle='--', color='black', alpha=0.5, label=desired_label)
         desired_label_added = True
 

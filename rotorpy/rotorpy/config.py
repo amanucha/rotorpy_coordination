@@ -25,12 +25,12 @@ B = np.array([[h ** 2 / 2], [h]])
 time_step = h
 
 
-# sceario-specific parameters
+# scenario-specific parameters
 # delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
-delays = [0]*8
+num_agents = 36
+delays = [0]*num_agents
 t_final = 8  #70/np.pi 
 T = int(t_final/time_step)
-num_agents = 6
 
 # path following parameters
 path_following = False
@@ -44,11 +44,18 @@ coeff_agent = 1
 
 
 du11 = 20.0  # Communication term, parameter of the phi function
-dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
+# dus = [4.7, 5.0, 5.4,5.6,5.8,6.0]
 # dus = [1.0]*6
 # dupc = [dus[i]/3 for i in range(len(dus))]
 # dupc = 2.5 #pace keeping term
-dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
+# dupc = [2.25,2.5,2.7,2.8,2.9,3.0]
+
+# --- Dynamically generate agent-specific parameters ---
+# Generate linearly spaced values for dus, from a start value to an end value.
+dus = np.linspace(4.7, 4.7 + (num_agents - 1) * 0.2, num_agents).tolist()
+
+# Generate dupc based on dus or as a separate linear space.
+dupc = np.linspace(2.25, 2.25 + (num_agents - 1) * 0.1, num_agents).tolist()
 
 # wind parameters
 drones_with_wind = [4,5]
@@ -68,5 +75,7 @@ stop_at_consensus = False
 u_min = [-6]
 u_max = [6]
 x_min = [0, 0.0]
-x_minimums = [[0, 0.2], [0, 0.5], [0, 0.7], [0, 1.1], [0, 1.3], [0, 1.5]]
-x_max = [np.inf, 2]
+# Dynamically generate x_minimums constraints
+x_minimums_seconds = np.linspace(0.2, 0.2 + (num_agents - 1) * 0.2, num_agents)
+x_minimums = [[0, val] for val in x_minimums_seconds]
+x_max = [np.inf, max(2.0, x_minimums_seconds[-1] + 1.0)]

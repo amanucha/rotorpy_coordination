@@ -2,30 +2,19 @@
 Imports
 """
 # from examples.gymnasium_basic_usage import controller
-from rotorpy.environments import Environment
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
 from rotorpy.controllers.quadrotor_control import SE3Control
-from rotorpy.trajectories.hover_traj import HoverTraj
 from rotorpy.trajectories.circular_traj import CircularTraj
-from rotorpy.wind.default_winds import NoWind, ConstantWind, SinusoidWind, LadderWind, DecreasingWind
+# from rotorpy.wind.default_winds import NoWind, ConstantWind, SinusoidWind, LadderWind, DecreasingWind
 from rotorpy.trajectories.lissajous_traj import TwoDLissajous
-from rotorpy.trajectories.speed_traj import ConstantSpeed
-from rotorpy.trajectories.minsnap import MinSnap
 from rotorpy.world import World
 from rotorpy.utils.animate import animate
 from rotorpy.simulate import merge_dicts
 from rotorpy.config import *
 import numpy as np
-from rotorpy.mpc import MPC
-import matplotlib
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
-import os
-import yaml
-import multiprocessing
-
-
 
 
 def find_collisions(all_positions, epsilon=1e-1):

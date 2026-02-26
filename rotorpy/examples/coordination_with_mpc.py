@@ -1,16 +1,12 @@
-import csv
-import numpy as np
-import time
 import os
-from rotorpy.environments import Environment
+import csv
+import time
+import numpy as np
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
 from rotorpy.controllers.quadrotor_control import SE3Control
-from rotorpy.trajectories.circular_traj import CircularTraj 
 from rotorpy.trajectories.lissajous_traj import TwoDLissajous
-from rotorpy.trajectories.lissajous_3d import ThreeDLissajous
-from rotorpy.trajectories.mixed_traj import PiecewiseTrajectory
-from rotorpy.wind.default_winds import NoWind, ConstantWind, SinusoidWind, LadderWind, DecreasingWind, StrongWind
+from rotorpy.wind.default_winds import DecreasingWind
 from rotorpy.world import World
 from rotorpy.utils.animate import animate
 from rotorpy.simulate import merge_dicts
@@ -19,21 +15,16 @@ from rotorpy.mpc import MPC
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import CubicSpline
-from mpl_toolkits.mplot3d import Axes3D
-from rotorpy.trajectories.bspline_mixed import BSplineMixed
-from pathlib import Path
+
 
 WIND_ENABLED = False
 
 def generate_trajectories():
-    # intersecting trajectories
-    trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 3*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/6, pi_param = np.pi/2)
-                    ]
+    # Generate trajectories for the number of agents specified in the config.
+    trajectories = []
+    for i in range(num_agents):
+        rotation = i * np.pi / num_agents  # Evenly space the rotation angles
+        trajectories.append(TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle=rotation, pi_param=np.pi/2))
 
     plot_trajectories = False
     # Plotting the trajectories
@@ -229,10 +220,12 @@ def execute_mpc(trajectories):
                 #                                            actual_state, i, L)
 
             else:
-                AAA = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                # AAA = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
                 #u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
-                u[t, :, i]= AAA[0]
-                cost[t, i] = AAA[1].item()
+                # u[t, :, i]= AAA[0]
+                # cost[t, i] = AAA[1].item()
+                u_opt, cost_opt = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                u[t, :, i], cost[t, i] = u_opt, cost_opt.item()
 
 
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
