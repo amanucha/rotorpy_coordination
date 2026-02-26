@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import time
+import os
 from rotorpy.environments import Environment
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
@@ -21,16 +22,11 @@ from scipy.interpolate import CubicSpline
 from mpl_toolkits.mplot3d import Axes3D
 from rotorpy.trajectories.bspline_mixed import BSplineMixed
 from pathlib import Path
-# from rotorpy.generate_trajectories import generate_mixed_trajectories
+
+WIND_ENABLED = False
+WIND_TYPE = "decreasing"
 
 def generate_trajectories():
-    # non-homogenuous trajectories
-    # trajectories = generate_mixed_trajectories()
-
-
-    # circlar non-overlapping trajectories
-    # trajectories = [CircularTraj(center=np.array([0, 0, 0]), radius=radius * (i * 1.2 + 1.5), z=z, freq=freq) for i in range(num_agents)]
-
     # intersecting trajectories
     trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
                     TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
@@ -102,18 +98,19 @@ def execute_mpc(trajectories):
     for i in range(num_agents):
         mav[i] = Multirotor(quad_params)
         controller[i] = SE3Control(quad_params)
-        # in case of wind uncomment one of the following line
-        # wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration = wind_duration)
-        # wind[i] = StrongWind(initial_speed=initial_wind_speed, wind_duration=wind_duration)
         # Init mav at the first waypoint for the trajectory.
+
+        if WIND_ENABLED:
+            wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration=wind_duration)
+            initial_wind_val = wind[i].update(0, i, drones_with_wind)
+        else:
+            initial_wind_val = np.array([0, 0, 0])
+
         x0[i] = {'x': trajectories[i].update(x0_gamma[0][i])["x"], #.flatten()),
               'v': trajectories[i].update(x0_gamma[0][i])["x_dot"],  #.flatten()),
               'q': np.array([0, 0, 0, 1]),  # [i,j,k,w]
               'w': np.zeros(3, ),
-              # in case of wind comment the following line
-              'wind': np.array([0, 0, 0]),
-              # in case of wind uncomment the following line
-              #'wind': wind[i].update(0, i, drones_with_wind),
+              'wind': initial_wind_val,
               'rotor_speeds': np.array([1788.53, 1788.53, 1788.53, 1788.53])}
         times[i] = [x0_gamma[0][i]]
         states[i] = [x0[i]]
@@ -183,8 +180,13 @@ def execute_mpc(trajectories):
         for i in range(num_agents):
             desired_trajectories[i].append(trajectories[i].update(0 + t*time_step)["x"])
             mpc = mpcs[i]
-            # in case of wind uncomment the following line
-            # states[i][-1]["wind"] = wind[i].update(t, i, drones_with_wind)
+
+            if WIND_ENABLED:
+                # Update the wind value for the current time step
+                states[i][-1]["wind"] = wind[i].update(t * time_step, i, drones_with_wind)
+            else:
+                states[i][-1]["wind"] = np.array([0.0, 0.0, 0.0])
+
             actual_state = mav[i].step(states[i][-1], controls[i][-1], time_step)
 
             # Compute the position difference between the ith crazyflie and the rest
@@ -425,7 +427,6 @@ def main():
     desired_x_coords = [np.squeeze([point[0] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
     desired_z_coords = [np.squeeze([point[2] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
 
-    import os
     if not os.path.exists('plots'):
         os.makedirs('plots')
 
