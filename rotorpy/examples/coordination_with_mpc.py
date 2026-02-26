@@ -24,7 +24,6 @@ from rotorpy.trajectories.bspline_mixed import BSplineMixed
 from pathlib import Path
 
 WIND_ENABLED = False
-WIND_TYPE = "decreasing"
 
 def generate_trajectories():
     # intersecting trajectories
@@ -145,12 +144,6 @@ def execute_mpc(trajectories):
             for i in range(n):
                 for j in range(i + 1, n):
                     if i != j:
-                        # prob = np.random.normal(0.5,0.5)
-                        # prob = np.clip(prob, 0, 1)
-                        # value = 1 if prob >= 0.5 else 0
-
-                        # value = int(random.choice([0, 1]))
-
                         prob = np.random.uniform(0, 1)
                         value = 1 if prob >= no_communication_percentage else 0
                         L[i, j] = value
@@ -268,24 +261,24 @@ def execute_mpc(trajectories):
         writer = csv.writer(f)
         for i in range(x[:, 0, 0].size):
             writer.writerow(x[i, 0, :])
-    with open("log/gamma-dot.csv", "w", newline="") as f2:
-        writer = csv.writer(f2)
+    with open("log/gamma-dot.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for i in range(x[:, 1, 1].size):
             writer.writerow(x[i, 1, :])
-    with open("log/gamma-dot-dot.csv", "w", newline="") as f3:
-        writer = csv.writer(f3)
+    with open("log/gamma-dot-dot.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for i in range(u[:, 0, 0].size):
             writer.writerow(u[i, 0, :])
-    with open("log/xyz.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/xyz.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         num_time_points = len(states[0]) 
         for t in range(num_time_points):
             row = []
             for idx in range(num_agents):
                 row.extend([states[idx][t]["x"][0], states[idx][t]["x"][1], states[idx][t]["x"][2]])
             writer.writerow(row)
-    with open("log/xyz_desired.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/xyz_desired.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         num_time_points = len(desired_trajectories[0]) 
         for t in range(num_time_points):
             row = []
@@ -296,12 +289,12 @@ def execute_mpc(trajectories):
     time_array = np.arange(0, t_final, time_step)
 
     # Save the array to a CSV file
-    with open("log/time.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/time.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for time_val in time_array:
             writer.writerow([time_val])
-    with open("log/distances.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/distances.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for dist_val in range(len(min_distances)):
             writer.writerow([min_distances[dist_val]])
 
@@ -448,35 +441,29 @@ def main():
     }
     
     np.savez('plots/plot_data.npz', **save_data)
-    # # Animate.
-    # ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation_video")
-
+    # Animate.
     ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= None, blit = False)
     plt.show()
-
     figsize = (6.4, 4.8)
+
     try:
         plt.style.use('seaborn-whitegrid')
     except OSError:
         plt.style.use('ggplot')
+
     fig = plt.figure(7, figsize=figsize)
     ax = fig.add_subplot(projection='3d')
     colors = plt.cm.tab10(range(all_pos.shape[1]))
     ax.set_zlim(-9, 9)
     ax.set_xlim(-9, 9)
     ax.set_ylim(-5, 5)
-    for mav in range(all_pos.shape[1]):
-        # Plot desired trajectories with dashed lines
-        # x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
-        # y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
-        #
-        # # Plot the desired trajectory with dashed lines
-        # ax.plot(x_coords, y_coords, linestyle='--', color='black', label='Desired trajectory' if mav == 0 else '')
 
+    for mav in range(all_pos.shape[1]):
         ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav],
                 label=f'UAV {mav + 1}')
         ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
                 markerfacecolor=colors[mav], markeredgecolor='k')
+
     x_ticks = np.arange(-9, 10, 3)
     y_ticks = np.arange(-9, 10, 3)
     z_ticks = np.arange(-5, 6, 3)
