@@ -61,7 +61,20 @@ class MPC:
                     cost_temp *= self.phi3(dist)
                 cost += cost_temp
         return cost
+    
 
+    def F_i4(self, x, gamma_all, gamma_dot_all):
+        cost = 0
+        gamma_i = x[0]
+        num_of_neighbors = 0
+        for j in range(self.num_agents):
+            if j != self.agent_idx:
+                dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
+                cost = self.phi(dist) * (gamma_dot_all[j])
+                num_of_neighbors += 1
+        cost /= num_of_neighbors
+        return cost
+    
     # F_i0 function with collision avoidance
     def F_i2(self, x, gamma_all):
         cost = 0
@@ -128,18 +141,28 @@ class MPC:
 
     def dynamics(self, x, u, x_next):
         return x_next - self.A @ x - self.B @ u
-
-    def objective(self, x, u, gamma_all, L):
+    
+    def objective(self, x, u, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
         obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
         if self.cav:
             obj += coeff_f_i2*self.F_i2(x, gamma_all)
         return obj
-
-    def objective_terminal(self, x, gamma_all, L):
+    
+    def objective_mean_pace(self, x, u, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
+        return obj
+    def objective_terminal(self, x, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
         # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
         obj = (gamma_dot - 1) ** 2 + self.F_i0(x, gamma_all, L)
+        return obj
+    
+    def objective_terminal_mean_pace(self, x, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
+        obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L)
         return obj
 
     def setup_MPC(self):
@@ -147,6 +170,7 @@ class MPC:
         u = ca.SX.sym('u', self.nu, self.K)
         x0 = ca.SX.sym('x0', self.nx, 1)  # stores gamma and gamma_dot, initial states
         gamma_all = ca.SX.sym('gamma_all', self.num_agents, self.K + 1)
+        gamma_dot_all = ca.SX.sym('gamma_dot_all', self.num_agents, self.K + 1)
         L = ca.SX.sym('L', self.num_agents, self.num_agents)
 
         const = [x0 - x[:, 0]]
@@ -154,9 +178,9 @@ class MPC:
 
         for k in range(self.K):
             const.append(self.dynamics(x[:, k], u[:, k], x[:, k + 1]))
-            cost += self.h * self.objective(x[:, k], u[:, k], gamma_all[:, k], L)
+            cost += self.h * self.objective_mean_pace(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
 
-        cost += self.objective_terminal(x[:, self.K], gamma_all[:, self.K], L)
+        cost += self.objective_terminal_mean_pace(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
 
         # Set up the NLP problem
         if communication_is_disturbed:
@@ -169,7 +193,7 @@ class MPC:
             nlp = {'x': ca.vertcat(ca.vec(u), ca.vec(x)),
                 'f': cost,
                 'g': ca.vertcat(*const),
-                'p': ca.vertcat(x0, ca.vec(gamma_all))
+                'p': ca.vertcat(x0, ca.vec(gamma_all), ca.vec(gamma_dot_all))
                 }
         opts = {
             'ipopt.print_level': 0,
@@ -177,7 +201,7 @@ class MPC:
         }
         self.solver = ca.nlpsol('solver', 'ipopt', nlp, opts)
 
-    def solve(self, x, gamma_all, x_max, x_min, u_max, u_min, actual_state, agent_idx, L):
+    def solve(self, x, gamma_all, gamma_dot_all, x_max, x_min, u_max, u_min, actual_state, agent_idx, L):
         # add error path following to gamma_all
         dist = self.distance(x, actual_state, agent_idx)
         x_d_dot = self.trajs[self.agent_idx].update(x[0])["x_dot"]  # take 1st index since it is the velocity returned from the trajectory,
@@ -210,7 +234,7 @@ class MPC:
                             ubx=u_max * self.K + x_max * (self.K + 1))
         else:
             sol = self.solver(x0=self.x_prev,
-                            p=ca.vertcat(x, ca.vec(gamma_all)),
+                            p=ca.vertcat(x, ca.vec(gamma_all), ca.vec(gamma_dot_all)),
                             lbg=[0] * self.nx * (self.K + 1),
                             ubg=[0] * self.nx * (self.K + 1),
                             lbx=u_min * self.K + x_min * (self.K + 1),
