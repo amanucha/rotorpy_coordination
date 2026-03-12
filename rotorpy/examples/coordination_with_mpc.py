@@ -1,15 +1,12 @@
+import os
 import csv
-import numpy as np
 import time
-from rotorpy.environments import Environment
+import numpy as np
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
 from rotorpy.controllers.quadrotor_control import SE3Control
-from rotorpy.trajectories.circular_traj import CircularTraj 
 from rotorpy.trajectories.lissajous_traj import TwoDLissajous
-from rotorpy.trajectories.lissajous_3d import ThreeDLissajous
-from rotorpy.trajectories.mixed_traj import PiecewiseTrajectory
-from rotorpy.wind.default_winds import NoWind, ConstantWind, SinusoidWind, LadderWind, DecreasingWind, StrongWind
+from rotorpy.wind.default_winds import DecreasingWind
 from rotorpy.world import World
 from rotorpy.utils.animate import animate
 from rotorpy.simulate import merge_dicts
@@ -18,28 +15,16 @@ from rotorpy.mpc import MPC
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import CubicSpline
-from mpl_toolkits.mplot3d import Axes3D
-from rotorpy.trajectories.bspline_mixed import BSplineMixed
-from pathlib import Path
-from rotorpy.generate_trajectories import generate_mixed_trajectories
 
+
+WIND_ENABLED = False
 
 def generate_trajectories():
-    # non-homogenuous trajectories
-    # trajectories = generate_mixed_trajectories()
-
-
-    # circlar non-overlapping trajectories
-    # trajectories = [CircularTraj(center=np.array([0, 0, 0]), radius=radius * (i * 1.2 + 1.5), z=z, freq=freq) for i in range(num_agents)]
-
-    # intersecting trajectories
-    trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 3*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/6, pi_param = np.pi/2),
-                    TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/6, pi_param = np.pi/2)
-                    ]
+    # Generate trajectories for the number of agents specified in the config.
+    trajectories = []
+    for i in range(num_agents):
+        rotation = i * np.pi / num_agents  # Evenly space the rotation angles
+        trajectories.append(TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle=rotation, pi_param=np.pi/2))
 
     plot_trajectories = False
     # Plotting the trajectories
@@ -103,18 +88,19 @@ def execute_mpc(trajectories):
     for i in range(num_agents):
         mav[i] = Multirotor(quad_params)
         controller[i] = SE3Control(quad_params)
-        # in case of wind uncomment one of the following line
-        # wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration = wind_duration)
-        # wind[i] = StrongWind(initial_speed=initial_wind_speed, wind_duration=wind_duration)
         # Init mav at the first waypoint for the trajectory.
+
+        if WIND_ENABLED:
+            wind[i] = DecreasingWind(initial_speed=initial_wind_speed, wind_duration=wind_duration)
+            initial_wind_val = wind[i].update(0, i, drones_with_wind)
+        else:
+            initial_wind_val = np.array([0, 0, 0])
+
         x0[i] = {'x': trajectories[i].update(x0_gamma[0][i])["x"], #.flatten()),
               'v': trajectories[i].update(x0_gamma[0][i])["x_dot"],  #.flatten()),
               'q': np.array([0, 0, 0, 1]),  # [i,j,k,w]
               'w': np.zeros(3, ),
-              # in case of wind comment the following line
-              'wind': np.array([0, 0, 0]),
-              # in case of wind uncomment the following line
-              #'wind': wind[i].update(0, i, drones_with_wind),
+              'wind': initial_wind_val,
               'rotor_speeds': np.array([1788.53, 1788.53, 1788.53, 1788.53])}
         times[i] = [x0_gamma[0][i]]
         states[i] = [x0[i]]
@@ -149,12 +135,6 @@ def execute_mpc(trajectories):
             for i in range(n):
                 for j in range(i + 1, n):
                     if i != j:
-                        # prob = np.random.normal(0.5,0.5)
-                        # prob = np.clip(prob, 0, 1)
-                        # value = 1 if prob >= 0.5 else 0
-
-                        # value = int(random.choice([0, 1]))
-
                         prob = np.random.uniform(0, 1)
                         value = 1 if prob >= no_communication_percentage else 0
                         L[i, j] = value
@@ -184,8 +164,13 @@ def execute_mpc(trajectories):
         for i in range(num_agents):
             desired_trajectories[i].append(trajectories[i].update(0 + t*time_step)["x"])
             mpc = mpcs[i]
-            # in case of wind uncomment the following line
-            # states[i][-1]["wind"] = wind[i].update(t, i, drones_with_wind)
+
+            if WIND_ENABLED:
+                # Update the wind value for the current time step
+                states[i][-1]["wind"] = wind[i].update(t * time_step, i, drones_with_wind)
+            else:
+                states[i][-1]["wind"] = np.array([0.0, 0.0, 0.0])
+
             actual_state = mav[i].step(states[i][-1], controls[i][-1], time_step)
 
             # Compute the position difference between the ith crazyflie and the rest
@@ -235,7 +220,12 @@ def execute_mpc(trajectories):
                 #                                            actual_state, i, L)
 
             else:
-                u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                # AAA = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                #u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                # u[t, :, i]= AAA[0]
+                # cost[t, i] = AAA[1].item()
+                u_opt, cost_opt = mpc.solve(x[t, :, i], gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
+                u[t, :, i], cost[t, i] = u_opt, cost_opt.item()
 
 
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
@@ -264,24 +254,24 @@ def execute_mpc(trajectories):
         writer = csv.writer(f)
         for i in range(x[:, 0, 0].size):
             writer.writerow(x[i, 0, :])
-    with open("log/gamma-dot.csv", "w", newline="") as f2:
-        writer = csv.writer(f2)
+    with open("log/gamma-dot.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for i in range(x[:, 1, 1].size):
             writer.writerow(x[i, 1, :])
-    with open("log/gamma-dot-dot.csv", "w", newline="") as f3:
-        writer = csv.writer(f3)
+    with open("log/gamma-dot-dot.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for i in range(u[:, 0, 0].size):
             writer.writerow(u[i, 0, :])
-    with open("log/xyz.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/xyz.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         num_time_points = len(states[0]) 
         for t in range(num_time_points):
             row = []
             for idx in range(num_agents):
                 row.extend([states[idx][t]["x"][0], states[idx][t]["x"][1], states[idx][t]["x"][2]])
             writer.writerow(row)
-    with open("log/xyz_desired.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/xyz_desired.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         num_time_points = len(desired_trajectories[0]) 
         for t in range(num_time_points):
             row = []
@@ -292,12 +282,12 @@ def execute_mpc(trajectories):
     time_array = np.arange(0, t_final, time_step)
 
     # Save the array to a CSV file
-    with open("log/time.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/time.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for time_val in time_array:
             writer.writerow([time_val])
-    with open("log/distances.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
+    with open("log/distances.csv", "w", newline="") as f:
+        writer = csv.writer(f)
         for dist_val in range(len(min_distances)):
             writer.writerow([min_distances[dist_val]])
 
@@ -423,7 +413,6 @@ def main():
     desired_x_coords = [np.squeeze([point[0] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
     desired_z_coords = [np.squeeze([point[2] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
 
-    import os
     if not os.path.exists('plots'):
         os.makedirs('plots')
 
@@ -445,31 +434,24 @@ def main():
     }
     
     np.savez('plots/plot_data.npz', **save_data)
-    # # Animate.
-    # ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation_video")
-
+    # Animate.
     ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= None, blit = False)
     plt.show()
-
     figsize = (6.4, 4.8)
+
     try:
         plt.style.use('seaborn-whitegrid')
     except OSError:
         plt.style.use('ggplot')
+
     fig = plt.figure(7, figsize=figsize)
     ax = fig.add_subplot(projection='3d')
     colors = plt.cm.tab10(range(all_pos.shape[1]))
     ax.set_zlim(-9, 9)
     ax.set_xlim(-9, 9)
     ax.set_ylim(-5, 5)
-    for mav in range(all_pos.shape[1]):
-        # Plot desired trajectories with dashed lines
-        # x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
-        # y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
-        #
-        # # Plot the desired trajectory with dashed lines
-        # ax.plot(x_coords, y_coords, linestyle='--', color='black', label='Desired trajectory' if mav == 0 else '')
 
+    for mav in range(all_pos.shape[1]):
         ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav],
                 label=f'UAV {mav + 1}')
         ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
@@ -479,11 +461,10 @@ def main():
     y_ticks = np.arange(-9, 10, 3)
     z_ticks = np.arange(-5, 6, 3)
     ax.view_init(elev=20, azim=-45)
-    ax.set_xticks(x_ticks, fontsize=14)
-    ax.set_yticks(y_ticks, fontsize=14)
-    ax.set_zticks(z_ticks, fontsize=14)
-    ax.tick_params(axis='x', which='major', labelsize=6)
-    ax.tick_params(axis='y', which='major', labelsize=6)
+    ax.set_xticks(x_ticks)
+    ax.set_yticks(y_ticks)
+    ax.set_zticks(z_ticks)
+    ax.tick_params(axis='both', which='major', labelsize=6)
     ax.tick_params(axis='z', which='major', labelsize=6)
     ax.set_xlabel('X (m)', fontsize=16)
     ax.set_ylabel('Y (m)', fontsize=16)
@@ -493,7 +474,6 @@ def main():
     plt.tight_layout()
 
     fig.savefig('plots/trajectories.jpg', dpi=300)
-
     
     fig2, ax2 = plt.subplots(figsize=figsize)
     for mav in range(all_pos.shape[1]):
@@ -506,15 +486,15 @@ def main():
     ax2.set_autoscale_on(False)
     ax2.set_xlim(-lim, lim)
     ax2.set_ylim(-lim, lim)
-    ax2.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
-    ax2.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax2.set_xticks(np.linspace(-lim/2, lim/2, 5))
+    ax2.set_yticks(np.linspace(-lim/2, lim/2, 5))
     ax2.set_xlabel('Y (m)', fontsize=16)
     ax2.set_ylabel('X (m)', fontsize=16)
     ax2.grid(True)
-    plt.tight_layout()
     ax2.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
-    plt.tight_layout()
     ax2.tick_params(axis='both', which='major', labelsize=14)
+    
+    plt.tight_layout()
     fig2.savefig('plots/trajectories_2d.jpg', dpi=300)
 
     fig3, ax3 = plt.subplots(figsize=figsize)
@@ -532,14 +512,14 @@ def main():
     ax3.set_autoscale_on(False)
     ax3.set_xlim(-lim, lim)
     ax3.set_ylim(-lim, lim)
-    ax3.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
-    ax3.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax3.set_xticks(np.linspace(-lim/2, lim/2, 5))
+    ax3.set_yticks(np.linspace(-lim/2, lim/2, 5))
     ax3.set_xlabel('Y (m)', fontsize=16)
     ax3.set_ylabel('X (m)', fontsize=16)
     ax3.grid(True)
-    plt.tight_layout()
     ax3.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
     ax3.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
     fig3.savefig('plots/trajectories_2d_with_desired.jpg', dpi=300)
 
     world.draw(ax)
