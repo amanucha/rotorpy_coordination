@@ -75,6 +75,29 @@ class MPC:
         cost /= num_of_neighbors
         return cost
     
+
+    def F_i5(self, x, gamma_all, L):
+        cost = 0
+        gamma_i = x[0]
+        for j in range(self.num_agents):
+            if j != self.agent_idx:
+                dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
+                in_zone = ca.logic_and(gamma_i > 24, gamma_i < 41)
+
+                sq_term = ca.if_else(
+                    in_zone,
+                    (gamma_i - gamma_all[j] + (j - self.agent_idx) * sequential_parameter) ** 2,
+                    (gamma_i - gamma_all[j]) ** 2
+                )
+                cost_temp = self.phi(dist) * sq_term
+                if communication_is_disturbed:
+                    cost_temp*= L[self.agent_idx, j]
+                if self.cav:
+                    cost_temp *= self.phi3(dist)
+                cost += cost_temp
+        return cost 
+
+
     # F_i0 function with collision avoidance
     def F_i2(self, x, gamma_all):
         cost = 0
@@ -151,8 +174,15 @@ class MPC:
     
     def objective_mean_pace(self, x, u, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
-        obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
+        # obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
+        obj = (self.F_i4(x, gamma_all, gamma_dot_all)-1) ** 2 + self.F_i0(x, gamma_all, L) + u ** 2
         return obj
+    
+    def objective_sequential(self, x, u, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        obj = (gamma_dot - 1) ** 2 + self.F_i5(x, gamma_all, L) + u ** 2
+        return obj 
+    
     def objective_terminal(self, x, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
         # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
@@ -162,9 +192,15 @@ class MPC:
     def objective_terminal_mean_pace(self, x, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
         # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
-        obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L)
+        obj = (self.F_i4(x, gamma_all, gamma_dot_all)-1) ** 2 + self.F_i0(x, gamma_all, L)
+        # obj = (gamma_dot - 1) ** 2 + (gamma_dot - self.F_i4(x, gamma_all, gamma_dot_all)) ** 2 + self.F_i0(x, gamma_all, L)
         return obj
-
+    
+    def objective_terminal_sequential(self, x, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        obj = (gamma_dot - 1) ** 2 + self.F_i5(x, gamma_all, L)
+        return obj
+    
     def setup_MPC(self):
         x = ca.SX.sym('x', self.nx, self.K + 1)
         u = ca.SX.sym('u', self.nu, self.K)
@@ -178,9 +214,9 @@ class MPC:
 
         for k in range(self.K):
             const.append(self.dynamics(x[:, k], u[:, k], x[:, k + 1]))
-            cost += self.h * self.objective_mean_pace(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
+            cost += self.h * self.objective_sequential(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
 
-        cost += self.objective_terminal_mean_pace(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
+        cost += self.objective_terminal_sequential(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
 
         # Set up the NLP problem
         if communication_is_disturbed:
@@ -201,6 +237,7 @@ class MPC:
         }
         self.solver = ca.nlpsol('solver', 'ipopt', nlp, opts)
 
+    # def solve(self, x, gamma_all, gamma_dot_all, x_max, x_min, u_max, u_min, actual_state, agent_idx, L):
     def solve(self, x, gamma_all, gamma_dot_all, x_max, x_min, u_max, u_min, actual_state, agent_idx, L):
         # add error path following to gamma_all
         dist = self.distance(x, actual_state, agent_idx)
