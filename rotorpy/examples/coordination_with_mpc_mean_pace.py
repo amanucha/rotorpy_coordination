@@ -74,8 +74,10 @@ def execute_mpc(trajectories):
               trajs=trajectories, du=du11,
               A=A, B=B, agent_idx=i, num_agents=num_agents, delta = delta, cav = cav, path_following= path_following) for i in range(num_agents)]
     x0_gamma = np.vstack([np.array([delays[i], 1]) for i in range(num_agents)]).T
-    gamma_all = np.vstack([np.arange(x0_gamma[0, i], (K + 1) * h + x0_gamma[0, i], h) for i in range(num_agents)])
-    gamma_dot_all = np.vstack([np.arange(x0_gamma[1, i], (K + 1) * h + x0_gamma[1, i], h) for i in range(num_agents)])
+    gamma_all = np.vstack([np.linspace(x0_gamma[0, i], x0_gamma[0, i] + K*h, K + 1) for i in range(num_agents)])
+    gamma_dot_all = np.vstack([np.linspace(x0_gamma[1, i], x0_gamma[1, i] + K * h, K + 1) for i in range(num_agents)])
+    # gamma_all = np.vstack([np.arange(x0_gamma[0, i], (K + 1) * h + x0_gamma[0, i], h) for i in range(num_agents)])
+    # gamma_dot_all = np.vstack([np.arange(x0_gamma[1, i], (K + 1) * h + x0_gamma[1, i], h) for i in range(num_agents)])
 
 
     # laplacian matrix

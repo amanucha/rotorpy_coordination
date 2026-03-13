@@ -21,8 +21,6 @@ from rotorpy.trajectories.bspline_mixed import BSplineMixed
 from pathlib import Path
 from rotorpy.trajectories.generate_trajectories import generate_mixed_trajectories
 from rotorpy.trajectories.generate_tunnel_trajectories import generate_tunnel_trajectories
-import os
-from datetime import datetime
 
 def generate_trajectories():
     # non-homogenuous trajectories
@@ -303,24 +301,110 @@ def execute_mpc(trajectories):
             writer.writerow([min_distances[dist_val]])
 
     return times, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time
-from generate_plots import generate_all_plots
+def plots(x, u, cost, t, min_distances):
+    figsize = (6.4, 4.8)  
+    dpi = 300 
+
+    # 2D plots
+    plt.figure(2, figsize=figsize, dpi=dpi)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(x[:t, 0, i])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, x[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
+    plt.xlabel('t (s)', fontsize=16)
+    plt.ylabel(r'${{\gamma}_i}(t)$', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.locator_params(axis='x', nbins=6)
+    plt.locator_params(axis='y', nbins=6)
+    # plt.legend(fontsize=14)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('plots/Gammas.png', dpi=dpi)
+
+    plt.figure(3, figsize=figsize, dpi=dpi)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(x[:t, 1, i])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, x[:t, 1, i][nonzero_indices], label=f'UAV {i+1}')
+    plt.xlabel('t (s)', fontsize=16)
+    plt.ylabel(r'$\dot{{{\gamma}_i}}(t)$', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.locator_params(axis='x', nbins=6)
+    plt.locator_params(axis='y', nbins=6)
+    # plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(1, 1.02))
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('plots/Gamma_Dots.png', dpi=dpi)
+
+    plt.figure(4, figsize=figsize, dpi=dpi)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(u[:t, 0, i])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, u[:t, 0, i][nonzero_indices], label=f'UAV {i+1}')
+    plt.xlabel('t (s)', fontsize=16)
+    plt.ylabel(r'$\ddot{{{\gamma}_i}}(t)$', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.locator_params(axis='x', nbins=6)
+    plt.locator_params(axis='y', nbins=6)
+    # plt.legend(fontsize=14)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('plots/Gamma_Dot_Dots.png', dpi=dpi)
+
+    plt.figure(5, figsize=figsize, dpi=dpi)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(cost[:t, i])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, cost[:t, i][nonzero_indices], label=f'UAV {i+1}')
+    plt.xlabel('t (s)', fontsize=16)
+    plt.ylabel('Cost', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.locator_params(axis='x', nbins=6)
+    plt.locator_params(axis='y', nbins=6)
+    # plt.legend(fontsize=14)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('plots/Costs.png', dpi=dpi)
+
+    plt.figure(6, figsize=figsize, dpi=dpi)
+    for i in range(num_agents):
+        nonzero_indices = np.nonzero(min_distances[:t])
+        time_values = nonzero_indices[0] * time_step  # Convert indices to time
+        plt.plot(time_values, min_distances[:t])
+    plt.xlabel('t (s)', fontsize=16)
+    plt.ylabel('Distance', fontsize=16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.ylim(ymin=0)
+    plt.locator_params(axis='x', nbins=6)
+    plt.locator_params(axis='y', nbins=6)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('plots/Distances.png', dpi=dpi)
+
+
 
 def main():
     # Construct the world.
     world = World.empty([-lim, lim, -lim, lim, -lim, lim])
     
     trajectories = generate_trajectories()
-    time_sim, states, flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time = execute_mpc(trajectories)
+    time, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time = execute_mpc(trajectories)
     for i in range(num_agents):
-        time_sim[i]     = np.array(time_sim[i])
-        states[i]       = merge_dicts(states[i])
-        controls[i]     = merge_dicts(controls[i])
-        flats[i]        = merge_dicts(flats[i])
+        time[i]        = np.array(time[i])
+        states[i]      = merge_dicts(states[i])
+        controls[i]    = merge_dicts(controls[i])
+        flats[i]       = merge_dicts(flats[i])
 
     # Concatenate all the relevant states/inputs for animation.
     all_pos = []
     all_rot = []
     all_wind = []
+    all_time = np.arange(0, t_final, time_step)
     for i in range(num_agents):
         all_pos.append(states[i]['x'])
         all_wind.append(states[i]['wind'])
@@ -330,35 +414,136 @@ def main():
     all_wind = np.stack(all_wind, axis=1)
     all_rot = np.stack(all_rot, axis=1)
 
-    all_time = time_sim[0][:t]
 
-    # Create timestamped folder
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    save_dir = os.path.join('plots', timestamp)
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    all_time = time[0][:t]
+
+    # Process desired trajectories into a single list of NumPy arrays (one for each agent)
+    desired_y_coords = [np.squeeze([point[1] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
+    desired_x_coords = [np.squeeze([point[0] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
+    desired_z_coords = [np.squeeze([point[2] for point in desired_trajectories[mav][:t]]) for mav in range(num_agents)]
+
+    import os
+    if not os.path.exists('plots'):
+        os.makedirs('plots')
 
     save_data = {
-        'all_time': all_time,
-        'all_pos': all_pos,
+        'all_time': all_time, # Time vector (1D)
+        'all_pos': all_pos,   # All positions (t, num_agents, 3)
         'num_agents': num_agents,
-        't': t,
-        'desired_trajectories': desired_trajectories,
+        't': t,               # Total number of timesteps
+        'desired_x_coords': desired_x_coords, # List of arrays (num_agents, t)
+        'desired_y_coords': desired_y_coords, # List of arrays (num_agents, t)
+        'desired_z_coords': desired_z_coords,
         'x': x,
         'u': u,
         'cost': cost,
         'min_distances': min_distances,
+        't_end': t, # Re-saving t as 't_end' for clarity in the plots function call
         'mean_execution_time': mean_execution_time,
         'max_execution_time': max_execution_time
     }
-    np.savez(os.path.join(save_dir, 'plot_data.npz'), **save_data)
+    
+    np.savez('plots/plot_data.npz', **save_data)
+    # # Animate.
+    # ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= "Simulation_video")
 
-    # Animate
-    ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename=None, blit=False)
+    ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename= None, blit = False)
     plt.show()
 
-    # Generate all plots using refactored module
-    generate_all_plots(all_pos, desired_trajectories, time_sim, x, u, cost, t, min_distances, save_dir, world, num_agents, time_step)
+    figsize = (6.4, 4.8)
+    try:
+        plt.style.use('seaborn-whitegrid')
+    except OSError:
+        plt.style.use('ggplot')
+    fig = plt.figure(7, figsize=figsize)
+    ax = fig.add_subplot(projection='3d')
+    colors = plt.cm.tab10(range(all_pos.shape[1]))
+    ax.set_zlim(-9, 9)
+    ax.set_xlim(-9, 9)
+    ax.set_ylim(-5, 5)
+    for mav in range(all_pos.shape[1]):
+        # Plot desired trajectories with dashed lines
+        # x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
+        # y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
+        #
+        # # Plot the desired trajectory with dashed lines
+        # ax.plot(x_coords, y_coords, linestyle='--', color='black', label='Desired trajectory' if mav == 0 else '')
+
+        ax.plot(all_pos[:t, mav, 0], all_pos[:t, mav, 1], all_pos[:t, mav, 2], color=colors[mav],
+                label=f'UAV {mav + 1}')
+        ax.plot([all_pos[-1, mav, 0]], [all_pos[-1, mav, 1]], [all_pos[-1, mav, 2]], '*', markersize=10,
+                markerfacecolor=colors[mav], markeredgecolor='k')
+
+    x_ticks = np.arange(-9, 10, 3)
+    y_ticks = np.arange(-9, 10, 3)
+    z_ticks = np.arange(-5, 6, 3)
+    ax.view_init(elev=20, azim=-45)
+    ax.set_xticks(x_ticks, fontsize=14)
+    ax.set_yticks(y_ticks, fontsize=14)
+    ax.set_zticks(z_ticks, fontsize=14)
+    ax.tick_params(axis='x', which='major', labelsize=6)
+    ax.tick_params(axis='y', which='major', labelsize=6)
+    ax.tick_params(axis='z', which='major', labelsize=6)
+    ax.set_xlabel('X (m)', fontsize=16)
+    ax.set_ylabel('Y (m)', fontsize=16)
+    ax.set_zlabel('Z (m)', fontsize=16)
+    ax.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
+    ax.grid(True)
+    plt.tight_layout()
+
+    fig.savefig('plots/trajectories.jpg', dpi=300)
+
+    
+    fig2, ax2 = plt.subplots(figsize=figsize)
+    for mav in range(all_pos.shape[1]):
+        ax2.plot(all_pos[:t, mav, 1], all_pos[:t, mav, 0], color=colors[mav], label=f'UAV {mav + 1}')
+        ax2.plot(all_pos[-1, mav, 1], all_pos[-1, mav, 0], '*', markersize=10,
+                 markerfacecolor=colors[mav], markeredgecolor='k')
+        # Mark the starting point with a triangle
+        ax2.plot(all_pos[0, mav, 1], all_pos[0, mav, 0], 'o', markersize=5,
+                 markerfacecolor='red', markeredgecolor='black')
+    ax2.set_autoscale_on(False)
+    ax2.set_xlim(-lim, lim)
+    ax2.set_ylim(-lim, lim)
+    ax2.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax2.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax2.set_xlabel('Y (m)', fontsize=16)
+    ax2.set_ylabel('X (m)', fontsize=16)
+    ax2.grid(True)
+    plt.tight_layout()
+    ax2.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
+    plt.tight_layout()
+    ax2.tick_params(axis='both', which='major', labelsize=14)
+    fig2.savefig('plots/trajectories_2d.jpg', dpi=300)
+
+    fig3, ax3 = plt.subplots(figsize=figsize)
+    for mav in range(all_pos.shape[1]):
+        # Plot desired trajectories with dashed lines
+        x_coords = [point[0] for point in desired_trajectories[mav][:t]]  # Extract x
+        y_coords = [point[1] for point in desired_trajectories[mav][:t]]  # Extract y
+        # Plot the desired trajectory with dashed lines
+        ax3.plot(y_coords, x_coords, linestyle='--', color='black')
+        ax3.plot(all_pos[:t, mav, 1], all_pos[:t, mav, 0], color=colors[mav], label=f'UAV {mav + 1}')
+        ax3.plot(all_pos[-1, mav, 1], all_pos[-1, mav, 0], '*', markersize=10,
+                 markerfacecolor=colors[mav], markeredgecolor='k')
+        ax3.plot(all_pos[0, mav, 1], all_pos[0, mav, 0], 'o', markersize=5,
+                 markerfacecolor='red', markeredgecolor='black')
+    ax3.set_autoscale_on(False)
+    ax3.set_xlim(-lim, lim)
+    ax3.set_ylim(-lim, lim)
+    ax3.set_xticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax3.set_yticks(np.linspace(-lim/2, lim/2, 5), fontsize=14)
+    ax3.set_xlabel('Y (m)', fontsize=16)
+    ax3.set_ylabel('X (m)', fontsize=16)
+    ax3.grid(True)
+    plt.tight_layout()
+    ax3.legend(loc='upper center', ncol=all_pos.shape[1], fontsize=8, frameon=False)
+    ax3.tick_params(axis='both', which='major', labelsize=14)
+    fig3.savefig('plots/trajectories_2d_with_desired.jpg', dpi=300)
+
+    world.draw(ax)
+
+    plots(x, u, cost, t, min_distances)
 
 if __name__ == "__main__":
     main()
