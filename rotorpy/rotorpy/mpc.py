@@ -16,7 +16,6 @@ class MPC:
         self.num_agents = num_agents
         self.trajs = trajs
         self.du = du11
-        self.du2 = dus[self.agent_idx]
         self.delta = delta  # parameter for path following
         self.x_prev = ca.DM.zeros(self.nu * self.K + self.nx * (self.K + 1), 1)
         self.x_buffer = []
@@ -24,6 +23,9 @@ class MPC:
         self.cav = cav
         self.path_following = path_following
         self.x_min = x_min
+        self.alpha = alpha
+        if self.cav:
+            self.du2 = dus[self.agent_idx]
         self.setup_MPC()
 
     def path_following_error(self, x_pf, x_d_dot, delta):
@@ -31,10 +33,9 @@ class MPC:
         x_d_dot_transpose = ca.transpose(x_d_dot)
         numerator = ca.mtimes(x_d_dot_transpose, x_pf)
         # Compute the norm of x_d_dot (the Euclidean norm of each column of x_d_dot)
-        norm = ca.norm_2(x_d_dot)  # Taking the norm of the distance
+        norm = ca.norm_2(x_d_dot)
         denominator = norm + delta
         alpha_bar = numerator / denominator
-        # alpha_bar = ca.sparsify(alpha_bar.T) #squeeze to get a 1D array
         return alpha_bar
 
     def distance(self, x, actual_state, agent_idx):
@@ -74,15 +75,15 @@ class MPC:
                 num_of_neighbors += 1
         cost /= num_of_neighbors
         return cost
-    
 
+    # for sequential
     def F_i5(self, x, gamma_all, L):
         cost = 0
         gamma_i = x[0]
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
-                in_zone = ca.logic_and(gamma_i > 24, gamma_i < 41)
+                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 45)
 
                 sq_term = ca.if_else(
                     in_zone,
@@ -95,6 +96,23 @@ class MPC:
                 if self.cav:
                     cost_temp *= self.phi3(dist)
                 cost += cost_temp
+        return cost 
+
+    # for competing
+    def F_i6(self, x, gamma_all, L):
+        cost = 0
+        gamma_i = x[0]
+        for j in range(self.num_agents):
+            if j != self.agent_idx:
+                dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
+                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 45)
+                dirac = ca.if_else(ca.fabs(gamma_all[j] - gamma_i) < 0.1, 1.0, 0.0)
+                sq_term = ca.if_else(
+                    in_zone,
+                    ca.fmax(0, gamma_all[j] - gamma_i) ** 2 + dirac * (gamma_all[j] - gamma_i) * self.alpha[self.agent_idx],
+                    (gamma_i - gamma_all[j]) ** 2
+                )
+                cost = self.phi(dist) * sq_term
         return cost 
 
 
@@ -182,7 +200,12 @@ class MPC:
         gamma_dot = x[1]
         obj = (gamma_dot - 1) ** 2 + self.F_i5(x, gamma_all, L) + u ** 2
         return obj 
-    
+
+    def objective_competing(self, x, u, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        obj = (gamma_dot - 1) ** 2 + self.F_i6(x, gamma_all, L) + u ** 2
+        return obj    
+
     def objective_terminal(self, x, gamma_all, L, gamma_dot_all):
         gamma_dot = x[1]
         # obj = (gamma_dot - 1) ** 2 + self.dist_to_neighb(x, gamma_all)
@@ -200,7 +223,12 @@ class MPC:
         gamma_dot = x[1]
         obj = (gamma_dot - 1) ** 2 + self.F_i5(x, gamma_all, L)
         return obj
-    
+
+    def objective_terminal_competing(self, x, gamma_all, L, gamma_dot_all):
+        gamma_dot = x[1]
+        obj = (gamma_dot - 1) ** 2 + self.F_i6(x, gamma_all, L)
+        return obj 
+
     def setup_MPC(self):
         x = ca.SX.sym('x', self.nx, self.K + 1)
         u = ca.SX.sym('u', self.nu, self.K)
@@ -214,9 +242,19 @@ class MPC:
 
         for k in range(self.K):
             const.append(self.dynamics(x[:, k], u[:, k], x[:, k + 1]))
-            cost += self.h * self.objective_sequential(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
+            if sequential:
+                cost += self.h * self.objective_sequential(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
+            elif competing:
+                cost += self.h * self.objective_competing(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
+            else:
+                cost += self.h * self.objective(x[:, k], u[:, k], gamma_all[:, k], L, gamma_dot_all[:, k])
 
-        cost += self.objective_terminal_sequential(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
+        if sequential:
+            cost += self.objective_terminal_sequential(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
+        elif competing:
+            cost += self.objective_terminal_competing(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
+        else:
+            cost += self.objective_terminal(x[:, self.K], gamma_all[:, self.K], L, gamma_dot_all[:, self.K])
 
         # Set up the NLP problem
         if communication_is_disturbed:

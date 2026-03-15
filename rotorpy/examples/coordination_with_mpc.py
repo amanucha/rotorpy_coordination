@@ -23,24 +23,21 @@ from rotorpy.trajectories.generate_trajectories import generate_mixed_trajectori
 from rotorpy.trajectories.generate_tunnel_trajectories import generate_tunnel_trajectories
 import os
 from datetime import datetime
+from generate_plots import generate_all_plots, saveToCSV
+import json
 
 def generate_trajectories():
-    # non-homogenuous trajectories
-    # trajectories = generate_mixed_trajectories()
-    trajectories = generate_tunnel_trajectories()
 
-
-    # circlar non-overlapping trajectories
-    # trajectories = [CircularTraj(center=np.array([0, 0, 0]), radius=radius * (i * 1.2 + 1.5), z=1, freq=freq) for i in range(num_agents)]
-
-    # intersecting trajectories
-    # trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 0.0, pi_param = np.pi/2),
-    #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = np.pi/6, pi_param = np.pi/2),
-    #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 2*np.pi/6, pi_param = np.pi/2),
-    #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 3*np.pi/6, pi_param = np.pi/2),
-    #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 4*np.pi/6, pi_param = np.pi/2),
-    #                 TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = 5*np.pi/6, pi_param = np.pi/2)
-    #                 ]
+    if traj_type == 'mixed':
+        trajectories = generate_mixed_trajectories()
+    elif traj_type == 'tunnel':
+        trajectories = generate_tunnel_trajectories()
+    elif traj_type == 'circular':
+        trajectories = [CircularTraj(center=np.array([0, 0, 0]), radius=radius * (i * 1.2 + 1.5), z=1, freq=freq) for i in range(num_agents)]
+    elif traj_type == 'lissajous':
+        trajectories = [TwoDLissajous(A=width, B=length, a=a, b=b, x_offset=0.0, y_offset=0, height=2.0, rotation_angle = i*np.pi/6, pi_param = np.pi/2) for i in range(num_agents)]
+    else:
+        trajectories = generate_mixed_trajectories()
 
     plot_trajectories = False
     # Plotting the trajectories
@@ -125,24 +122,28 @@ def execute_mpc(trajectories):
 
     min_distances = []
     execution_times = []
-    threshold = 0.2 #used for scalability testing
+    threshold = 0.5 #used for scalability testing
 
     while True:
         if any(j[-1] >= t_final for j in times) or t >= T: # if any agent arrives, break the loop
             break
-        if stop_at_consensus:
-            # break when a consensus is achieved
-            max_diff = 0
-            for i in range(num_agents):
-                for j in range(i + 1, num_agents):
-                    # Calculate the difference between gamma_all[i] and gamma_all[j]
-                    diff = np.linalg.norm(gamma_all[i] - gamma_all[j])
-                    if diff > max_diff:
-                        max_diff = diff
 
-            # Stop the loop if the maximum difference is less than the threshold
-            if max_diff < threshold:
-                print(f"Stopping loop at t = {t} because the max difference is below the threshold.")
+        max_diff = 0
+        for i in range(num_agents):
+            for j in range(i + 1, num_agents):
+                # Calculate the difference between gamma_all[i] and gamma_all[j]
+                if sequential:
+                    diff = np.linalg.norm(gamma_all[i] - gamma_all[j] +(j - i) * sequential_parameter)
+                else:
+                    diff = np.linalg.norm(gamma_all[i] - gamma_all[j])
+                if diff > max_diff:
+                    max_diff = diff
+        cons_time = 0
+        # Stop the loop if the maximum difference is less than the threshold
+        if max_diff < threshold:
+            print(f"Stopping loop at t = {t} because the max difference is below the threshold.")
+            cons_time = t*time_step
+            if stop_at_consensus:
                 break
 
         def modify_laplacian(L):
@@ -190,7 +191,7 @@ def execute_mpc(trajectories):
             actual_state = mav[i].step(states[i][-1], controls[i][-1], time_step)
 
             # Compute the position difference between the ith crazyflie and the rest
-            x_min = [0.0, 0.0]
+            x_min = x_min_config
             if mpc.cav:
                 for j    in range(num_agents):
                     if i != j:
@@ -258,56 +259,13 @@ def execute_mpc(trajectories):
     print(f"Mean execution time: {mean_execution_time:.6f} seconds")
     print(f"Max execution time: {max_execution_time:.6f} seconds")
     print(f"Consensus time: {t*time_step} seconds")
-
-
-
-    with open("log/gamma.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        for i in range(x[:, 0, 0].size):
-            writer.writerow(x[i, 0, :])
-    with open("log/gamma-dot.csv", "w", newline="") as f2:
-        writer = csv.writer(f2)
-        for i in range(x[:, 1, 1].size):
-            writer.writerow(x[i, 1, :])
-    with open("log/gamma-dot-dot.csv", "w", newline="") as f3:
-        writer = csv.writer(f3)
-        for i in range(u[:, 0, 0].size):
-            writer.writerow(u[i, 0, :])
-    with open("log/xyz.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
-        num_time_points = len(states[0]) 
-        for t in range(num_time_points):
-            row = []
-            for idx in range(num_agents):
-                row.extend([states[idx][t]["x"][0], states[idx][t]["x"][1], states[idx][t]["x"][2]])
-            writer.writerow(row)
-    with open("log/xyz_desired.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
-        num_time_points = len(desired_trajectories[0]) 
-        for t in range(num_time_points):
-            row = []
-            for idx in range(num_agents):
-                row.extend([desired_trajectories[idx][t][0], desired_trajectories[idx][t][1], desired_trajectories[idx][t][2]])
-            writer.writerow(row)
-
-    time_array = np.arange(0, t_final, time_step)
-
-    # Save the array to a CSV file
-    with open("log/time.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
-        for time_val in time_array:
-            writer.writerow([time_val])
-    with open("log/distances.csv", "w", newline="") as f4:
-        writer = csv.writer(f4)
-        for dist_val in range(len(min_distances)):
-            writer.writerow([min_distances[dist_val]])
+    saveToCSV(x, u, states, num_agents, desired_trajectories, t_final, h, min_distances)
 
     return times, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time
-from generate_plots import generate_all_plots
 
 def main():
     # Construct the world.
-    world = World.empty([-lim, lim, -lim, lim, -lim, lim])
+    world = World.empty(world_limits)
     
     trajectories = generate_trajectories()
     time_sim, states, flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time = execute_mpc(trajectories)
@@ -332,6 +290,7 @@ def main():
 
     all_time = time_sim[0][:t]
 
+
     # Create timestamped folder
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     save_dir = os.path.join('plots', timestamp)
@@ -353,11 +312,42 @@ def main():
     }
     np.savez(os.path.join(save_dir, 'plot_data.npz'), **save_data)
 
-    # Animate
-    ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename=None, blit=False)
-    plt.show()
+    config = {
+        "traj_type": traj_type,
+        "sequential": sequential,
+        "competing": competing,
+        "world_limits": world_limits,
+        "nx": nx, "nu": nu, "K": K, "h": h,
+        "t_final": t_final, "T": T,
+        "num_agents": num_agents,
+        "sequential_parameter": sequential_parameter,
+        "alpha": alpha, "delays": delays,
+        "path_following": path_following, "delta": delta, "coeff": coeff,
+        "cav": cav, "coeff_f_i2": coeff_f_i2, "coeff_agent": coeff_agent,
+        "du11": du11, "dupc": dupc,
+        "drones_with_wind": drones_with_wind,
+        "wind_duration": wind_duration, "initial_wind_speed": initial_wind_speed,
+        "communication_is_disturbed": communication_is_disturbed,
+        "communication_disturbance_interval": communication_disturbance_interval,
+        "no_communication_percentage": no_communication_percentage,
+        "with_delay": with_delay,
+        "delay_during_the_whole_mission": delay_during_the_whole_mission,
+        "stop_at_consensus": stop_at_consensus,
+        "u_min": u_min, "u_max": u_max,
+        "x_min_config": x_min_config,
+        "x_minimums": x_minimums,
+        "x_max": [v if v != np.inf else None for v in x_max],
+        'mean_execution_time': mean_execution_time,
+        'max_execution_time': max_execution_time,
+        'consensus_time': cons_time
+    }
 
-    # Generate all plots using refactored module
+    with open(os.path.join(save_dir, 'config.json'), 'w') as f:
+        json.dump(config, f, indent=4)
+
+    # ani = animate(all_time[:t], all_pos, all_rot, all_wind, animate_wind=False, world=world, filename=None, blit=False)
+    # plt.show()
+
     generate_all_plots(all_pos, desired_trajectories, time_sim, x, u, cost, t, min_distances, save_dir, world, num_agents, time_step)
 
 if __name__ == "__main__":

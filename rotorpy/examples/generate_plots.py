@@ -2,6 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
+import csv
+
 
 def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_distances, save_dir, world, num_agents, time_step):
     figsize = (6.4, 4.8)
@@ -126,3 +128,45 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.savefig(os.path.join(save_dir, 'Distances.png'), dpi=dpi)
 
     plt.close('all')
+
+
+
+
+def saveToCSV(x,u,states,num_agents,desired_trajectories,t_final,time_step,min_distances):
+    with open("log/gamma.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        for i in range(x[:, 0, 0].size):
+            writer.writerow(x[i, 0, :])
+    with open("log/gamma-dot.csv", "w", newline="") as f2:
+        writer = csv.writer(f2)
+        for i in range(x[:, 1, 1].size):
+            writer.writerow(x[i, 1, :])
+    with open("log/gamma-dot-dot.csv", "w", newline="") as f3:
+        writer = csv.writer(f3)
+        for i in range(u[:, 0, 0].size):
+            writer.writerow(u[i, 0, :])
+    with open("log/xyz.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        num_time_points = len(states[0]) 
+        for t in range(num_time_points):
+            row = []
+            for idx in range(num_agents):
+                row.extend([states[idx][t]["x"][0], states[idx][t]["x"][1], states[idx][t]["x"][2]])
+            writer.writerow(row)
+    with open("log/xyz_desired.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        num_time_points = len(desired_trajectories[0]) 
+        for t in range(num_time_points):
+            row = []
+            for idx in range(num_agents):
+                row.extend([desired_trajectories[idx][t][0], desired_trajectories[idx][t][1], desired_trajectories[idx][t][2]])
+            writer.writerow(row)
+    time_array = np.arange(0, t_final, time_step)
+    with open("log/time.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        for time_val in time_array:
+            writer.writerow([time_val])
+    with open("log/distances.csv", "w", newline="") as f4:
+        writer = csv.writer(f4)
+        for dist_val in range(len(min_distances)):
+            writer.writerow([min_distances[dist_val]])

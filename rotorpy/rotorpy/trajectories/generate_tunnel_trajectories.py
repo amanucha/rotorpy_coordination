@@ -5,28 +5,32 @@ def generate_tunnel_trajectories():
     trajectories = []
     
     TUNNEL_START_X = 25.0
-    TUNNEL_END_X = 40.0
+    TUNNEL_END_X = 35.0
     TUNNEL_Y = 0.0
     TUNNEL_Z = 1.0
     
     FINAL_TARGET_X = 65.0
     
     # Jittered starting positions to break alignment on X=0
-    x_start_offsets = [0.0, 10.0, -12.0, 6.0]
+    x_start_offsets = [12, 0, 10, 20]
     # Non-symmetric offsets to avoid pair-symmetry look
-    y_start_offsets = [-5.5, -4.2, 4.8, 7] 
-    z_start_offsets = [0.2, 0, 0.2, 0.1]
+    y_start_offsets = [-5, 0, 2.5, 5] 
+    z_start_offsets = [0.8, 1, 0.9, 1]
     
     # Non-symmetric final lanes
     y_final_offsets = [-3.6, -1.3, 0.4, 2.7] 
     z_final_offsets = [1.0, 1.0, 1.0, 1.0] 
 
-    TOTAL_FLIGHT_DURATION = 60.0
-    APPROACH_DURATION = 25.0
-    TUNNEL_DURATION = 15.0
-    DIVERGE_DURATION = 10.0
-    FINAL_DURATION = 10.0
-
+    # TOTAL_FLIGHT_DURATION = 60.0
+    # APPROACH_DURATION = 25.0
+    # TUNNEL_DURATION = 10.0
+    # DIVERGE_DURATION = 10
+    # FINAL_DURATION = 15
+    TOTAL_FLIGHT_DURATION = 100.0
+    APPROACH_DURATION = 35.0
+    TUNNEL_DURATION = 20.0
+    DIVERGE_DURATION = 10
+    FINAL_DURATION = 35
     # Sanity check
     assert np.isclose(APPROACH_DURATION + TUNNEL_DURATION + DIVERGE_DURATION + FINAL_DURATION, TOTAL_FLIGHT_DURATION)
     
@@ -61,12 +65,16 @@ def generate_tunnel_trajectories():
 
         wp1_x = p_start[0] + approach_dist * 0.33
         wp1_y = np.interp(wp1_x, [p_start[0], TUNNEL_START_X], [p_start[1], TUNNEL_Y]) + (np.random.random()-0.5)*1.0
-        wp1_z = np.interp(wp1_x, [p_start[0], TUNNEL_START_X], [p_start[2], TUNNEL_Z]) + (np.random.random()-0.5)*1.5
+        
+        # UAV 2 (index 1) has standard fluctuations, others have low fluctuations
+        fluctuation_amp = 1.5 if i == 1 else 0.3
+        z_fluctuation = (np.random.random()-0.5) * fluctuation_amp
+        wp1_z = np.interp(wp1_x, [p_start[0], TUNNEL_START_X], [p_start[2], TUNNEL_Z]) + z_fluctuation
         p_wp1 = np.array([wp1_x, wp1_y, max(0.5, wp1_z)])
         
         wp2_x = p_start[0] + approach_dist * 0.66
         wp2_y = np.interp(wp2_x, [p_start[0], TUNNEL_START_X], [p_start[1], TUNNEL_Y]) + (np.random.random()-0.5)*1.0
-        wp2_z = np.interp(wp2_x, [p_start[0], TUNNEL_START_X], [p_start[2], TUNNEL_Z]) + (np.random.random()-0.5)*1.5
+        wp2_z = np.interp(wp2_x, [p_start[0], TUNNEL_START_X], [p_start[2], TUNNEL_Z]) + z_fluctuation
         p_wp2 = np.array([wp2_x, wp2_y, max(0.5, wp2_z)])
         
         # Velocities for approach waypoints
@@ -113,7 +121,7 @@ def generate_tunnel_trajectories():
         # Diverge Waypoint
         wp3_x = TUNNEL_END_X + (PARALLEL_START_X - TUNNEL_END_X) * 0.5
         wp3_y = np.interp(wp3_x, [TUNNEL_END_X, PARALLEL_START_X], [TUNNEL_Y, y_final_offsets[i]]) + (np.random.random()-0.5)*1.5
-        wp3_z = np.interp(wp3_x, [TUNNEL_END_X, PARALLEL_START_X], [TUNNEL_Z, z_final_offsets[i]]) + (np.random.random()-0.5)*1.5
+        wp3_z = np.interp(wp3_x, [TUNNEL_END_X, PARALLEL_START_X], [TUNNEL_Z, z_final_offsets[i]]) + (np.random.random()-0.5)*0.4
         p_wp3 = np.array([wp3_x, wp3_y, max(0.5, wp3_z)])
         
         # Velocities for diverge waypoint
