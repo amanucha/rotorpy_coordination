@@ -1,7 +1,5 @@
-import csv
 import numpy as np
 import time
-from rotorpy.environments import Environment
 from rotorpy.vehicles.multirotor import Multirotor
 from rotorpy.vehicles.crazyflie_params import quad_params
 from rotorpy.controllers.quadrotor_control import SE3Control
@@ -16,9 +14,6 @@ from rotorpy.mpc import MPC
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from scipy.interpolate import CubicSpline
-from mpl_toolkits.mplot3d import Axes3D
-from rotorpy.trajectories.bspline_mixed import BSplineMixed
-from pathlib import Path
 from rotorpy.trajectories.generate_trajectories import generate_mixed_trajectories
 from rotorpy.trajectories.generate_tunnel_trajectories import generate_tunnel_trajectories
 import os
@@ -123,6 +118,8 @@ def execute_mpc(trajectories):
     min_distances = []
     execution_times = []
     threshold = 0.5 #used for scalability testing
+    enter_if = True
+    cons_time = 0
 
     while True:
         if any(j[-1] >= t_final for j in times) or t >= T: # if any agent arrives, break the loop
@@ -138,11 +135,11 @@ def execute_mpc(trajectories):
                     diff = np.linalg.norm(gamma_all[i] - gamma_all[j])
                 if diff > max_diff:
                     max_diff = diff
-        cons_time = 0
         # Stop the loop if the maximum difference is less than the threshold
-        if max_diff < threshold:
+        if max_diff < threshold and enter_if:
             print(f"Stopping loop at t = {t} because the max difference is below the threshold.")
             cons_time = t*time_step
+            enter_if=False
             if stop_at_consensus:
                 break
 
@@ -258,17 +255,17 @@ def execute_mpc(trajectories):
     max_execution_time = np.max(execution_times)
     print(f"Mean execution time: {mean_execution_time:.6f} seconds")
     print(f"Max execution time: {max_execution_time:.6f} seconds")
-    print(f"Consensus time: {t*time_step} seconds")
+    print(f"Consensus time: {cons_time} seconds")
     saveToCSV(x, u, states, num_agents, desired_trajectories, t_final, h, min_distances)
 
-    return times, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time
+    return times, states,  flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time, cons_time
 
 def main():
     # Construct the world.
     world = World.empty(world_limits)
     
     trajectories = generate_trajectories()
-    time_sim, states, flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time = execute_mpc(trajectories)
+    time_sim, states, flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time, cons_time = execute_mpc(trajectories)
     for i in range(num_agents):
         time_sim[i]     = np.array(time_sim[i])
         states[i]       = merge_dicts(states[i])
@@ -308,7 +305,8 @@ def main():
         'cost': cost,
         'min_distances': min_distances,
         'mean_execution_time': mean_execution_time,
-        'max_execution_time': max_execution_time
+        'max_execution_time': max_execution_time,
+        'consensus_time': cons_time
     }
     np.savez(os.path.join(save_dir, 'plot_data.npz'), **save_data)
 

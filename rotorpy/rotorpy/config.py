@@ -17,7 +17,7 @@ sin_ampl = 0.3
 # mpc parameters
 nx = 2
 nu = 1
-K = 1  # time horizon
+K = 10  # time horizon
 h = 0.05 # time step
 A = np.array([[1, h], [0, 1]])  
 B = np.array([[h ** 2 / 2], [h]]) 
@@ -74,6 +74,6 @@ stop_at_consensus = False
 # ranges for gamma, gamma_dot and gamma_dot_dot
 u_min = [-6]
 u_max = [6]
-x_min_config = [0, 0.1]
+x_min_config = [0, 0.3]
 x_minimums = [[0, 0.2], [0, 0.5], [0, 0.7], [0, 1.1]]
 x_max = [np.inf, 2]

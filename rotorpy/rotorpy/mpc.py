@@ -83,7 +83,7 @@ class MPC:
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
-                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 45)
+                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 53)
 
                 sq_term = ca.if_else(
                     in_zone,
