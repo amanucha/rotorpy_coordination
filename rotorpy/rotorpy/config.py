@@ -23,13 +23,18 @@ A = np.array([[1, h], [0, 1]])
 B = np.array([[h ** 2 / 2], [h]]) 
 time_step = h
 traj_type = "tunnel"
-sequential = True
-competing = False
+sequential = False
+competing = True
 alpha = [15,25,35,45]
-
+s_star1_competing = 0
+s_star2_competing = 85
+s_star1_sequential = 0
+s_star2_sequential = 55
+# s_star1_sequential = 20
+# s_star2_sequential = 53
 # sceario-specific parameters
 # delays = [2.0,1.0,0.0,3.5,4.0,3.0, 4.0,4.0]
-delays = [2,5,10,11]
+delays = [2,5,6,30]
 # delays = [4.4, 3, 2.1, 0]
 # delays = [4.5, 6, 0, 3.5, 2.5, 5, 3.5, 6, 2, 4, 5.5, 1, 6, 3.5, 2, 5.5, 3.8, 5.7, 3.3, 0, 4.2, 0.5, 1.2, 3.2, 0, 5.7, 2.5, 6.2, 1.8, 4.3, 5.8, 1.2, 6.5, 3.4, 2.6, 5.6, 0.9, 0, 3.4, 0]
 # delays = [0]*8
@@ -38,7 +43,7 @@ t_final = 100#70/np.pi
 T = int(t_final/time_step)
 num_agents = 4
 sequential_parameter = 4
-
+run_multiple_simulations = False
 # path following parameters
 path_following = False
 delta = 1 
@@ -74,6 +79,6 @@ stop_at_consensus = False
 # ranges for gamma, gamma_dot and gamma_dot_dot
 u_min = [-6]
 u_max = [6]
-x_min_config = [0, 0.3]
+x_min_config = [0, 0]
 x_minimums = [[0, 0.2], [0, 0.5], [0, 0.7], [0, 1.1]]
 x_max = [np.inf, 2]

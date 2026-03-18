@@ -117,18 +117,16 @@ def execute_mpc(trajectories):
 
     min_distances = []
     execution_times = []
-    threshold = 0.5 #used for scalability testing
+    threshold = 0.5
     enter_if = True
     cons_time = 0
 
     while True:
         if any(j[-1] >= t_final for j in times) or t >= T: # if any agent arrives, break the loop
             break
-
         max_diff = 0
         for i in range(num_agents):
             for j in range(i + 1, num_agents):
-                # Calculate the difference between gamma_all[i] and gamma_all[j]
                 if sequential:
                     diff = np.linalg.norm(gamma_all[i] - gamma_all[j] +(j - i) * sequential_parameter)
                 else:
@@ -139,7 +137,7 @@ def execute_mpc(trajectories):
         if max_diff < threshold and enter_if:
             print(f"Stopping loop at t = {t} because the max difference is below the threshold.")
             cons_time = t*time_step
-            enter_if=False
+            enter_if = False
             if stop_at_consensus:
                 break
 
@@ -151,9 +149,7 @@ def execute_mpc(trajectories):
                         # prob = np.random.normal(0.5,0.5)
                         # prob = np.clip(prob, 0, 1)
                         # value = 1 if prob >= 0.5 else 0
-
                         # value = int(random.choice([0, 1]))
-
                         prob = np.random.uniform(0, 1)
                         value = 1 if prob >= no_communication_percentage else 0
                         L[i, j] = value
@@ -236,19 +232,17 @@ def execute_mpc(trajectories):
             else:
                 u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
 
-
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
             approx_x = A @ mpc.x_buffer[-1][:, -1]
             gamma_all_new[i, :] = np.hstack([mpc.x_buffer[-1][0, 1:], approx_x[0]])
             end_time = time.time()
             execution_times.append(end_time - start_time)
 
-
             times[i].append(x[t, 0, i])
             states[i].append(actual_state)
             flats[i].append(trajectories[i].update(x[t, 0, i]))  # x,v, yaw, etc, from trajectory with the current gamma
             controls[i].append(controller[i].update(times[i][-1], states[i][-1], flats[i][-1]))
-            print(t)
+            print(t*time_step)
         t += 1
         min_distances.append(min_dist)
     mean_execution_time = np.mean(execution_times)
@@ -337,7 +331,11 @@ def main():
         "x_max": [v if v != np.inf else None for v in x_max],
         'mean_execution_time': mean_execution_time,
         'max_execution_time': max_execution_time,
-        'consensus_time': cons_time
+        'consensus_time': cons_time,
+        's_star1': s_star1_sequential,
+        's_star2': s_star2_sequential,
+        's_star1_competing': s_star1_competing,
+        's_star2_competing': s_star2_competing
     }
 
     with open(os.path.join(save_dir, 'config.json'), 'w') as f:

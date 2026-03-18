@@ -76,37 +76,32 @@ class MPC:
         cost /= num_of_neighbors
         return cost
 
-    # for sequential
+    # sequential cost
     def F_i5(self, x, gamma_all, L):
         cost = 0
         gamma_i = x[0]
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
-                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 53)
+                in_zone = ca.logic_and(gamma_i > s_star1_sequential, gamma_i < s_star2_sequential)
 
                 sq_term = ca.if_else(
                     in_zone,
                     (gamma_i - gamma_all[j] + (j - self.agent_idx) * sequential_parameter) ** 2,
                     (gamma_i - gamma_all[j]) ** 2
                 )
-                cost_temp = self.phi(dist) * sq_term
-                if communication_is_disturbed:
-                    cost_temp*= L[self.agent_idx, j]
-                if self.cav:
-                    cost_temp *= self.phi3(dist)
-                cost += cost_temp
+                cost = self.phi(dist) * sq_term
         return cost 
 
-    # for competing
+    # competing cost
     def F_i6(self, x, gamma_all, L):
         cost = 0
         gamma_i = x[0]
         for j in range(self.num_agents):
             if j != self.agent_idx:
                 dist = ca.norm_2(self.trajs[self.agent_idx].update(gamma_i)["x"] - self.trajs[j].update(gamma_all[j])["x"])
-                in_zone = ca.logic_and(gamma_i > 20, gamma_i < 45)
-                dirac = ca.if_else(ca.fabs(gamma_all[j] - gamma_i) < 0.1, 1.0, 0.0)
+                in_zone = ca.logic_and(gamma_i > s_star1_competing, gamma_i < s_star2_competing)
+                dirac = self.dirac(gamma_all[j] - gamma_i, h=0.1)
                 sq_term = ca.if_else(
                     in_zone,
                     ca.fmax(0, gamma_all[j] - gamma_i) ** 2 + dirac * (gamma_all[j] - gamma_i) * self.alpha[self.agent_idx],
@@ -160,6 +155,17 @@ class MPC:
             )
         )
 
+    def dirac(self, x, h=0.1):
+        abs_x = ca.fabs(x)
+        return ca.if_else(
+            abs_x <= h / 2,
+            1,
+            ca.if_else(
+                ca.logic_and(abs_x <= h, abs_x >= h / 2),
+                4 * (abs_x - h) ** 2 / (h ** 2),
+                0
+            )
+        )
 
     def dist_to_neighb_2(self, x, gamma_all):
         cost = 0
