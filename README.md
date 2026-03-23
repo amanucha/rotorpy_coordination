@@ -8,12 +8,6 @@
 
 This repository provides a high-fidelity simulation framework for **distributed model predictive control (DMPC)** applied to multi-UAV time coordination. Built on top of [RotorPy](https://github.com/spencerfolk/rotorpy), an open-source multirotor simulator, the code replicates the full pipeline described in the paper: from virtual-time coordination to game-theoretic corridor navigation.
 
-...
-
-<!-- VISUAL: Insert overview GIF of multi-UAV coordination mission here -->
-<!-- Example: ![Overview](assets/overview.gif) -->
-
----
 
 ## Repository Structure
 
@@ -44,7 +38,7 @@ Each family of simulation scenarios is maintained in a dedicated branch for clar
 
 ### 1. Corridor Navigation — Offline Ordering
 
-The first approach embeds a **predefined UAV ordering** directly into the cost function. Each UAV is penalized for deviating from a prescribed separation $\Delta$ relative to its neighbors during the corridor phase ($\gamma \in [\gamma_1^*, \gamma_2^*]$).
+The first approach embeds a **predefined UAV ordering** directly into the cost function. Each UAV is penalized for deviating from a prescribed separation $\Delta$ relative to its neighbors during the corridor phase.
 
 
 ---
