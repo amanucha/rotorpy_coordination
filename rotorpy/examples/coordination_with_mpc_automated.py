@@ -234,7 +234,7 @@ def run_simulation(params):
     world = World.empty(world_limits)
 
     num_agents_val = params.get('num_agents', num_agents)
-    traj_type = params.get('trajectory_type', 'mixed')
+    traj_type = params.get('traj_type', 'mixed')
     trajectories = generate_trajectories(traj_type, num_agents_val)
     time_sim, states, flats, controls, x, u, cost, t, min_distances, desired_trajectories, mean_execution_time, max_execution_time, cons_time = execute_mpc(trajectories, params)
     

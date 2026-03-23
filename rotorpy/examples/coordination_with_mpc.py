@@ -201,7 +201,6 @@ def execute_mpc(trajectories):
                     distance = np.linalg.norm(pos_i - pos_j)
                     if distance <= min_dist:
                         min_dist = distance
-
             start_time = time.time()
             if with_delay:
                 # with 70% delay
@@ -231,7 +230,7 @@ def execute_mpc(trajectories):
 
             else:
                 u[t, :, i], cost[t, i] = mpc.solve(x[t, :, i], gamma_all, gamma_all, x_max, x_min, u_max, u_min, actual_state, i, L)
-
+        
             x[t + 1, :, i] = A @ x[t, :, i] + B @ u[t, :, i]
             approx_x = A @ mpc.x_buffer[-1][:, -1]
             gamma_all_new[i, :] = np.hstack([mpc.x_buffer[-1][0, 1:], approx_x[0]])

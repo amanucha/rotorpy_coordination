@@ -7,7 +7,7 @@ from rotorpy.config import *
 def main():
     k_values = [1,5,10,25] 
     agent_counts = [5,10,15]
-    trajectory_types = ['circular']
+    trajectory_types = ['circular', 'mixed']
     
     from rotorpy.config import delays
     base_params = {
@@ -23,6 +23,7 @@ def main():
                     params.update({
                     'K': k,
                     'num_agents': n_agents,
+                    'traj_type': traj,
                     })
                 
                     run_simulation(params)

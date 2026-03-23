@@ -30,6 +30,7 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     ax.set_zlabel('Z (m)', fontsize=16)
     ax.legend(loc='upper center', ncol=min(num_agents, 4), fontsize=8, frameon=False)
     ax.grid(True)
+    plt.legend()
     plt.tight_layout()
     fig.savefig(os.path.join(save_dir, 'trajectories.jpg'), dpi=dpi)
     world.draw(ax)
@@ -46,7 +47,9 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     ax2.set_ylabel('X (m)', fontsize=16)
     ax2.grid(True)
     ax2.legend(loc='upper center', ncol=min(num_agents, 4), fontsize=8, frameon=False)
+    plt.legend()
     plt.tight_layout()
+
     fig2.savefig(os.path.join(save_dir, 'trajectories_2d.jpg'), dpi=dpi)
 
     # 3. 2D with Desired
@@ -64,6 +67,8 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     ax3.set_ylabel('X (m)', fontsize=16)
     ax3.grid(True)
     ax3.legend(loc='upper center', ncol=min(num_agents, 4), fontsize=8, frameon=False)
+    plt.legend()
+
     plt.tight_layout()
     fig3.savefig(os.path.join(save_dir, 'trajectories_2d_with_desired.jpg'), dpi=dpi)
 
@@ -77,6 +82,7 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.xlabel('t (s)', fontsize=16)
     plt.ylabel(r'${{\gamma}_i}(t)$', fontsize=16)
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'Gammas.png'), dpi=dpi)
 
@@ -89,6 +95,7 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.xlabel('t (s)', fontsize=16)
     plt.ylabel(r'$\dot{{{\gamma}_i}}(t)$', fontsize=16)
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'Gamma_Dots.png'), dpi=dpi)
 
@@ -101,6 +108,7 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.xlabel('t (s)', fontsize=16)
     plt.ylabel(r'$\ddot{{{\gamma}_i}}(t)$', fontsize=16)
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'Gamma_Dot_Dots.png'), dpi=dpi)
 
@@ -113,6 +121,7 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.xlabel('t (s)', fontsize=16)
     plt.ylabel('Cost', fontsize=16)
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'Costs.png'), dpi=dpi)
 
@@ -124,13 +133,11 @@ def generate_all_plots(all_pos, desired_trajectories, times, x, u, cost, t, min_
     plt.ylabel('Distance', fontsize=16)
     plt.ylim(ymin=0)
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'Distances.png'), dpi=dpi)
 
     plt.close('all')
-
-
-
 
 def saveToCSV(x,u,states,num_agents,desired_trajectories,t_final,time_step,min_distances):
     with open("log/gamma.csv", "w", newline="") as f:
