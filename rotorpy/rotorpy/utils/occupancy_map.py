@@ -1,10 +1,10 @@
-import heapq
 import numpy as np
 from scipy.spatial import Rectangle
 from scipy.spatial.transform import Rotation
 
 from rotorpy.world import World
 from rotorpy.utils import shapes
+#import heapq
 
 
 class OccupancyMap:

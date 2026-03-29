@@ -1,23 +1,15 @@
-print('The below information will help debug installation problems.\n')
-
 import sys
-print('Python Version:')
-print(sys.version)
-print()
-
 import platform
-print('Operating system:')
-print(platform.platform())
-print()
-
 import matplotlib
-print('matplotlib:', matplotlib.__version__)
-
 import numpy
-print('numpy:     ', numpy.__version__)
-
 import pip
-print('pip:       ', pip.__version__)
-
 import scipy
-print('scipy:     ', scipy.__version__)
+
+print(f"{'Package':<12} | Version")
+print("-" * 25)
+print(f"{'Python':<12} | {sys.version.split()[0]}")
+print(f"{'OS':<12} | {platform.platform()}")
+print(f"{'pip':<12} | {pip.__version__}")
+print(f"{'matplotlib':<12} | {matplotlib.__version__}")
+print(f"{'numpy':<12} | {numpy.__version__}")
+print(f"{'scipy':<12} | {scipy.__version__}")

@@ -30,6 +30,7 @@ dependencies = [
     'timeout_decorator',
     'tqdm',
     'gymnasium == 0.29.1',
+    'casadi'
 ]
 
 [project.optional-dependencies]
